@@ -156,12 +156,16 @@ def _get_pair_counts(pre_token_counts: Counter) -> Counter:
 def _merge_pair(
     pre_token_counts: Counter,
     pair: tuple[bytes, bytes],
+    pair_counts: Counter,
 ) -> Counter:
     """Merge all occurrences of a pair in pre-token counts.
+
+    Also incrementally updates pair_counts.
 
     Args:
         pre_token_counts: Counter mapping pre-token to count
         pair: The pair to merge
+        pair_counts: Counter of pair frequencies (modified in place)
 
     Returns:
         New Counter with the pair merged
@@ -170,7 +174,23 @@ def _merge_pair(
     merged = pair[0] + pair[1]  # Concatenate bytes
 
     for token_seq, count in pre_token_counts.items():
-        # Find and merge all occurrences of the pair
+        # Check if this sequence contains the pair
+        has_pair = False
+        for i in range(len(token_seq) - 1):
+            if token_seq[i] == pair[0] and token_seq[i + 1] == pair[1]:
+                has_pair = True
+                break
+
+        if not has_pair:
+            new_counts[token_seq] += count
+            continue
+
+        # Remove old pair counts for this sequence
+        for i in range(len(token_seq) - 1):
+            old_pair = (token_seq[i], token_seq[i + 1])
+            pair_counts[old_pair] -= count
+
+        # Build new sequence with merges
         new_seq = []
         i = 0
         while i < len(token_seq):
@@ -180,7 +200,19 @@ def _merge_pair(
             else:
                 new_seq.append(token_seq[i])
                 i += 1
-        new_counts[tuple(new_seq)] += count
+
+        new_seq_tuple = tuple(new_seq)
+        new_counts[new_seq_tuple] += count
+
+        # Add new pair counts for this sequence
+        for i in range(len(new_seq) - 1):
+            new_pair = (new_seq[i], new_seq[i + 1])
+            pair_counts[new_pair] += count
+
+    # Clean up zero counts
+    to_delete = [p for p, c in pair_counts.items() if c <= 0]
+    for p in to_delete:
+        del pair_counts[p]
 
     return new_counts
 
@@ -218,22 +250,22 @@ def train_bpe(
     # Pre-tokenize the corpus in parallel
     pre_token_counts = _pretokenize_parallel(input_path, special_tokens)
 
+    # Build initial pair counts
+    pair_counts = _get_pair_counts(pre_token_counts)
+
     # Compute BPE merges
     merges: list[tuple[bytes, bytes]] = []
     num_merges = vocab_size - len(vocab)
 
     for _ in range(num_merges):
-        # Count all pairs
-        pair_counts = _get_pair_counts(pre_token_counts)
-
         if not pair_counts:
             break
 
         # Find the most frequent pair (break ties by lexicographic order)
         best_pair = max(pair_counts.keys(), key=lambda p: (pair_counts[p], p))
 
-        # Merge the pair
-        pre_token_counts = _merge_pair(pre_token_counts, best_pair)
+        # Merge the pair (also updates pair_counts incrementally)
+        pre_token_counts = _merge_pair(pre_token_counts, best_pair, pair_counts)
 
         # Add to merges and vocabulary
         merges.append(best_pair)
