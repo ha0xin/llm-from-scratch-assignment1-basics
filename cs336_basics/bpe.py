@@ -14,8 +14,29 @@ def find_chunk_boundaries(
     split_special_token: bytes,
 ) -> list[int]:
     """
-    Chunk the file into parts that can be counted independently.
-    May return fewer chunks if the boundaries end up overlapping.
+    Compute byte offsets that split a file into chunks suitable for independent
+    processing (e.g., parallel pre-tokenization).
+
+    The returned boundaries are byte indices into the file. The first boundary
+    is always 0, and the last boundary is always the file size. For each interior
+    boundary, the function starts from an initial uniform split point and scans
+    forward until it finds the next occurrence of `split_special_token`. The
+    boundary is then set to the start of that special token, ensuring that no
+    chunk begins in the middle of a special token or document boundary.
+
+    As a result, except for the first chunk, all chunks begin at the start of
+    `split_special_token` (when such a token is found). If boundaries overlap,
+    fewer than `desired_num_chunks` boundaries may be returned.
+
+    Args:
+        file: An open binary file handle.
+        desired_num_chunks: The target number of chunks to split the file into.
+        split_special_token: A byte string representing a special token (e.g.,
+            b"<|endoftext|>") that must not be split across chunks.
+
+    Returns:
+        A sorted list of unique byte offsets. Consecutive offsets define
+        half-open intervals [start, end) corresponding to file chunks.
     """
     assert isinstance(split_special_token, bytes), "Must represent special token as a bytestring"
 
@@ -107,18 +128,12 @@ def _pretokenize_parallel(
         num_processes = cpu_count()
 
     # Build special tokens pattern for splitting
-    if special_tokens:
-        special_tokens_pattern = "|".join(re.escape(t) for t in special_tokens)
-        split_token = special_tokens[0].encode("utf-8")
-    else:
-        special_tokens_pattern = None
-        split_token = b"\n"
+    special_tokens_pattern = "|".join(re.escape(t) for t in special_tokens)
+    split_token = special_tokens[0].encode("utf-8") # ???
 
-    # Find chunk boundaries
     with open(input_path, "rb") as f:
         boundaries = find_chunk_boundaries(f, num_processes, split_token)
 
-    # Prepare tasks
     tasks = [
         (str(input_path), start, end, special_tokens_pattern)
         for start, end in zip(boundaries[:-1], boundaries[1:])
@@ -171,48 +186,50 @@ def _merge_pair(
         New Counter with the pair merged
     """
     new_counts: Counter[tuple[bytes, ...]] = Counter()
-    merged = pair[0] + pair[1]  # Concatenate bytes
+    a, b = pair
+    merged = a + b
 
     for token_seq, count in pre_token_counts.items():
-        # Check if this sequence contains the pair
-        has_pair = False
-        for i in range(len(token_seq) - 1):
-            if token_seq[i] == pair[0] and token_seq[i + 1] == pair[1]:
-                has_pair = True
-                break
-
-        if not has_pair:
-            new_counts[token_seq] += count
-            continue
-
-        # Remove old pair counts for this sequence
-        for i in range(len(token_seq) - 1):
-            old_pair = (token_seq[i], token_seq[i + 1])
-            pair_counts[old_pair] -= count
-
-        # Build new sequence with merges
-        new_seq = []
+        # 懒构造：只有真的发生合并才创建 new_seq
+        new_seq = None  # None 表示“目前还没发生合并”
         i = 0
-        while i < len(token_seq):
-            if i < len(token_seq) - 1 and token_seq[i] == pair[0] and token_seq[i + 1] == pair[1]:
+        n = len(token_seq)
+
+        while i < n:
+            if i + 1 < n and token_seq[i] == a and token_seq[i + 1] == b:
+                # 第一次命中复制前缀
+                if new_seq is None:
+                    new_seq = list(token_seq[:i])
                 new_seq.append(merged)
                 i += 2
             else:
-                new_seq.append(token_seq[i])
+                if new_seq is not None:
+                    new_seq.append(token_seq[i])
                 i += 1
+
+        # 没发生合并：序列不变，pair_counts 也不变
+        if new_seq is None:
+            new_counts[token_seq] += count
+            continue
 
         new_seq_tuple = tuple(new_seq)
         new_counts[new_seq_tuple] += count
 
-        # Add new pair counts for this sequence
-        for i in range(len(new_seq) - 1):
-            new_pair = (new_seq[i], new_seq[i + 1])
+        # 发生合并：撤销所有旧序列 pair 贡献的 pair_counts
+        for j in range(len(token_seq) - 1):
+            old_pair = (token_seq[j], token_seq[j + 1])
+            pair_counts[old_pair] -= count
+
+        # 加回新序列贡献的 pair_counts，显然这里可以进一步优化
+        for j in range(len(new_seq) - 1):
+            new_pair = (new_seq[j], new_seq[j + 1])
             pair_counts[new_pair] += count
 
-    # Clean up zero counts
-    to_delete = [p for p, c in pair_counts.items() if c <= 0]
-    for p in to_delete:
-        del pair_counts[p]
+    # 清理掉 <= 0 的项，实际上不会有负数，只会是 0
+    for p in list(pair_counts.keys()):
+        if pair_counts[p] <= 0:
+            print("Removing pair with non-positive count:", p, pair_counts[p])
+            del pair_counts[p]
 
     return new_counts
 
@@ -233,16 +250,13 @@ def train_bpe(
         vocab: Mapping from token ID to token bytes
         merges: List of merge operations in order
     """
-    # Initialize vocabulary with special tokens first, then 256 byte values
     vocab: dict[int, bytes] = {}
     idx = 0
 
-    # Add special tokens first
     for token in special_tokens:
         vocab[idx] = token.encode("utf-8")
         idx += 1
 
-    # Add 256 byte values
     for i in range(256):
         vocab[idx] = bytes([i])
         idx += 1
@@ -255,16 +269,14 @@ def train_bpe(
 
     # Compute BPE merges
     merges: list[tuple[bytes, bytes]] = []
-    num_merges = vocab_size - len(vocab)
 
-    for _ in range(num_merges):
+    while idx < vocab_size:
         if not pair_counts:
             break
 
         # Find the most frequent pair (break ties by lexicographic order)
         best_pair = max(pair_counts.keys(), key=lambda p: (pair_counts[p], p))
 
-        # Merge the pair (also updates pair_counts incrementally)
         pre_token_counts = _merge_pair(pre_token_counts, best_pair, pair_counts)
 
         # Add to merges and vocabulary
