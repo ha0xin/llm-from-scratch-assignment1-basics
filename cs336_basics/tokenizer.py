@@ -3,6 +3,7 @@ from collections.abc import Iterable, Iterator
 import regex as re
 
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+PAT_RE = re.compile(PAT)
 
 
 class Tokenizer:
@@ -15,19 +16,21 @@ class Tokenizer:
         self.vocab = vocab
         self.merges = merges
         self.special_tokens = special_tokens or []
+        self._special_set = set(self.special_tokens)
+
+        # Tokenizer should append them to the vocabulary if they aren’t already there
+        for token in self._special_set:
+            if (token.encode("utf-8") not in vocab.values()):
+                vocab[len(vocab)] = token.encode("utf-8")
 
         # Build reverse vocab: bytes -> id
+        # We assume vocab is bijective
         self._bytes_to_id: dict[bytes, int] = {v: k for k, v in vocab.items()}
+        self._special_str_to_id = {
+            s: self._bytes_to_id[s.encode("utf-8")] for s in self._special_set
+        }
 
-        # Add special tokens to vocab if not already present
-        for token in self.special_tokens:
-            token_bytes = token.encode("utf-8")
-            if token_bytes not in self._bytes_to_id:
-                new_id = len(self.vocab)
-                self.vocab[new_id] = token_bytes
-                self._bytes_to_id[token_bytes] = new_id
-
-        # Build merge ranking: pair -> priority (lower is earlier/higher priority)
+        # Build merge ranking: pair -> priority
         self._merge_rank: dict[tuple[bytes, bytes], int] = {
             pair: i for i, pair in enumerate(merges)
         }
@@ -90,6 +93,31 @@ class Tokenizer:
             tokens = new_tokens
 
         return tokens
+    
+    def _encode_iter(self, text: str):
+        """Encode text into token IDs, yielding them one at a time.
+        Args:
+            text: The text to encode
+        Yields:
+            Token IDs one at a time
+        """
+        if not text:
+            return
+
+        parts = self._special_pattern.split(text) if self._special_pattern else [text]
+
+        for part in parts:
+            if not part:
+                continue
+
+            if part in self._special_set:
+                yield self._special_str_to_id[part]
+                continue
+
+            for m in PAT_RE.finditer(part):
+                pre_token_bytes = m.group().encode("utf-8")
+                for tok in self._apply_bpe(pre_token_bytes):
+                    yield self._bytes_to_id[tok]
 
     def encode(self, text: str) -> list[int]:
         """Encode text into a sequence of token IDs.
@@ -100,39 +128,21 @@ class Tokenizer:
         Returns:
             List of token IDs
         """
-        if not text:
-            return []
+        return list(self._encode_iter(text))
 
-        ids: list[int] = []
+    def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
+        """Encode an iterable of strings, yielding token IDs lazily.
 
-        # Split by special tokens if any
-        if self._special_pattern:
-            parts = self._special_pattern.split(text)
-        else:
-            parts = [text]
+        This is memory-efficient for large files.
 
-        for part in parts:
-            if not part:
-                continue
+        Args:
+            iterable: An iterable of strings (e.g., file handle)
 
-            # Check if this part is a special token
-            if part in self.special_tokens:
-                token_bytes = part.encode("utf-8")
-                ids.append(self._bytes_to_id[token_bytes])
-            else:
-                # Pre-tokenize with regex pattern
-                for match in re.finditer(PAT, part):
-                    pre_token = match.group()
-                    pre_token_bytes = pre_token.encode("utf-8")
-
-                    # Apply BPE merges
-                    merged_tokens = self._apply_bpe(pre_token_bytes)
-
-                    # Convert to IDs
-                    for token in merged_tokens:
-                        ids.append(self._bytes_to_id[token])
-
-        return ids
+        Yields:
+            Token IDs one at a time
+        """
+        for chunk in iterable:
+            yield from self._encode_iter(chunk)
 
     def decode(self, ids: list[int]) -> str:
         """Decode a sequence of token IDs into text.
@@ -148,18 +158,3 @@ class Tokenizer:
 
         # Decode to string, replacing invalid sequences
         return all_bytes.decode("utf-8", errors="replace")
-
-    def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
-        """Encode an iterable of strings, yielding token IDs lazily.
-
-        This is memory-efficient for large files.
-
-        Args:
-            iterable: An iterable of strings (e.g., file handle)
-
-        Yields:
-            Token IDs one at a time
-        """
-        for line in iterable:
-            for id in self.encode(line):
-                yield id
