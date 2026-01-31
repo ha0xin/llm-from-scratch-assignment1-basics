@@ -74,3 +74,77 @@ class Embedding(nn.Module):
             token_ids: Long tensor of shape (batch_size, sequence_length)
         """
         return self.weight[token_ids]
+
+
+class RMSNorm(nn.Module):
+    """Root Mean Square Layer Norm (no bias)."""
+
+    def __init__(
+        self,
+        d_model: int,
+        eps: float = 1e-6,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        super().__init__()
+        self.d_model = d_model
+        self.eps = eps
+
+        weight = torch.empty(
+            (d_model,),
+            device=device,
+            dtype=dtype,
+        )
+        nn.init.ones_(weight)
+        self.weight = nn.Parameter(weight)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply RMSNorm to the last dimension.
+
+        Args:
+            x: Tensor with last dim = d_model.
+        """
+        rms = x.pow(2).mean(dim=-1, keepdim=True)
+        return torch.rsqrt(rms + self.eps) * x * self.weight
+
+
+class SwiGLU(nn.Module):
+    """SwiGLU feed-forward layer (no bias)."""
+
+    def __init__(
+        self,
+        d_model: int,
+        d_ff: int,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        super().__init__()
+        self.d_model = d_model
+        self.d_ff = d_ff
+
+        w1 = torch.empty((d_ff, d_model), device=device, dtype=dtype)
+        w2 = torch.empty((d_model, d_ff), device=device, dtype=dtype)
+        w3 = torch.empty((d_ff, d_model), device=device, dtype=dtype)
+
+        sigma_w1 = (2.0 / (d_model + d_ff)) ** 0.5
+        sigma_w2 = (2.0 / (d_ff + d_model)) ** 0.5
+        sigma_w3 = (2.0 / (d_model + d_ff)) ** 0.5
+
+        nn.init.trunc_normal_(w1, mean=0.0, std=sigma_w1, a=-3 * sigma_w1, b=3 * sigma_w1)
+        nn.init.trunc_normal_(w2, mean=0.0, std=sigma_w2, a=-3 * sigma_w2, b=3 * sigma_w2)
+        nn.init.trunc_normal_(w3, mean=0.0, std=sigma_w3, a=-3 * sigma_w3, b=3 * sigma_w3)
+
+        self.w1 = nn.Parameter(w1)
+        self.w2 = nn.Parameter(w2)
+        self.w3 = nn.Parameter(w3)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply SwiGLU to the last dimension.
+
+        Args:
+            x: Tensor with last dim = d_model.
+        """
+        x_w1 = torch.matmul(x, self.w1.T)
+        x_w3 = torch.matmul(x, self.w3.T)
+        gate = x_w1 * torch.sigmoid(x_w1)
+        return torch.matmul(gate * x_w3, self.w2.T)
