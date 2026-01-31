@@ -1,0 +1,18 @@
+{
+  "samples": 10,
+  "seed": 0,
+  "tinystories_total_docs": 2717495,
+  "owt_total_docs": 2399397,
+  "compression_ratio_ts": 4.105329949238579,
+  "compression_ratio_owt": 4.348288621646623,
+  "compression_ratio_owt_with_ts": 3.2404949846609905,
+  "throughput": {
+    "bytes": 50796314,
+    "tokens": 11615633,
+    "seconds": 53.14509477300453,
+    "bytes_per_sec": 955804.3732345056
+  },
+  "pile_seconds_est": 926797.3966286308,
+  "pile_days_est": 10.726821720238783,
+  "tokenize_datasets": false
+}

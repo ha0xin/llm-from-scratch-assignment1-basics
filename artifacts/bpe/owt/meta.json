@@ -1,0 +1,9 @@
+{
+  "input": "/data/share/hw1-data/owt_train.txt",
+  "vocab_size": 32000,
+  "special_tokens": [
+    "<|endoftext|>"
+  ],
+  "elapsed_sec": 836.6745784282684,
+  "max_rss_mb": 17777.296875
+}

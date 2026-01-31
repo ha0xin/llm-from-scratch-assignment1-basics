@@ -1,0 +1,9 @@
+{
+  "input": "/data/share/hw1-data/TinyStoriesV2-GPT4-train.txt",
+  "vocab_size": 10000,
+  "special_tokens": [
+    "<|endoftext|>"
+  ],
+  "elapsed_sec": 36.579949617385864,
+  "max_rss_mb": 254.6484375
+}

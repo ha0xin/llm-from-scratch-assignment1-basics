@@ -1,6 +1,7 @@
 import os
 from typing import BinaryIO
-from collections import Counter
+from collections import Counter, defaultdict
+import heapq
 from multiprocessing import Pool, cpu_count
 
 import regex as re
@@ -129,10 +130,18 @@ def _pretokenize_parallel(
 
     # Build special tokens pattern for splitting
     special_tokens_pattern = "|".join(re.escape(t) for t in special_tokens)
-    split_token = special_tokens[0].encode("utf-8") # ???
 
     with open(input_path, "rb") as f:
-        boundaries = find_chunk_boundaries(f, num_processes, split_token)
+        if special_tokens:
+            split_token = special_tokens[0].encode("utf-8")
+            boundaries = find_chunk_boundaries(f, num_processes, split_token)
+        else:
+            f.seek(0, os.SEEK_END)
+            file_size = f.tell()
+            f.seek(0)
+            chunk_size = file_size // num_processes
+            boundaries = [i * chunk_size for i in range(num_processes + 1)]
+            boundaries[-1] = file_size
 
     tasks = [
         (str(input_path), start, end, special_tokens_pattern)
@@ -151,93 +160,26 @@ def _pretokenize_parallel(
     return total_counts
 
 
-def _get_pair_counts(pre_token_counts: Counter) -> Counter:
-    """Count all adjacent pairs across all pre-tokens.
-
-    Args:
-        pre_token_counts: Counter mapping pre-token to count
-
-    Returns:
-        Counter mapping (token1, token2) pair to count
-    """
-    pair_counts: Counter[tuple[bytes, bytes]] = Counter()
-    for token_seq, count in pre_token_counts.items():
-        for i in range(len(token_seq) - 1):
-            pair = (token_seq[i], token_seq[i + 1])
-            pair_counts[pair] += count
-    return pair_counts
-
-
-def _merge_pair(
-    pre_token_counts: Counter,
-    pair: tuple[bytes, bytes],
-    pair_counts: Counter,
-) -> Counter:
-    """Merge all occurrences of a pair in pre-token counts.
-
-    Also incrementally updates pair_counts.
-
-    Args:
-        pre_token_counts: Counter mapping pre-token to count
-        pair: The pair to merge
-        pair_counts: Counter of pair frequencies (modified in place)
-
-    Returns:
-        New Counter with the pair merged
-    """
-    new_counts: Counter[tuple[bytes, ...]] = Counter()
-    a, b = pair
-    merged = a + b
-
-    for token_seq, count in pre_token_counts.items():
-        # 懒构造：只有真的发生合并才创建 new_seq
-        new_seq = None  # None 表示“目前还没发生合并”
-        i = 0
-        n = len(token_seq)
-
-        while i < n:
-            if i + 1 < n and token_seq[i] == a and token_seq[i + 1] == b:
-                # 第一次命中复制前缀
-                if new_seq is None:
-                    new_seq = list(token_seq[:i])
-                new_seq.append(merged)
-                i += 2
-            else:
-                if new_seq is not None:
-                    new_seq.append(token_seq[i])
-                i += 1
-
-        # 没发生合并：序列不变，pair_counts 也不变
-        if new_seq is None:
-            new_counts[token_seq] += count
-            continue
-
-        new_seq_tuple = tuple(new_seq)
-        new_counts[new_seq_tuple] += count
-
-        # 发生合并：撤销所有旧序列 pair 贡献的 pair_counts
-        for j in range(len(token_seq) - 1):
-            old_pair = (token_seq[j], token_seq[j + 1])
-            pair_counts[old_pair] -= count
-
-        # 加回新序列贡献的 pair_counts，显然这里可以进一步优化
-        for j in range(len(new_seq) - 1):
-            new_pair = (new_seq[j], new_seq[j + 1])
-            pair_counts[new_pair] += count
-
-    # 清理掉 <= 0 的项，实际上不会有负数，只会是 0
-    for p in list(pair_counts.keys()):
-        if pair_counts[p] <= 0:
-            print("Removing pair with non-positive count:", p, pair_counts[p])
-            del pair_counts[p]
-
-    return new_counts
+class _Seq:
+    def __init__(self, symbols: list[bytes], weight: int):
+        self.sym = symbols
+        self.weight = weight
+        n = len(symbols)
+        self.prev = [-1] * n
+        self.next = [-1] * n
+        for i in range(n):
+            if i > 0:
+                self.prev[i] = i - 1
+            if i < n - 1:
+                self.next[i] = i + 1
+        self.alive = [True] * n
 
 
 def train_bpe(
     input_path: str | os.PathLike,
     vocab_size: int,
     special_tokens: list[str],
+    log_every: int = 0,
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     """Train a BPE tokenizer on the given input corpus.
 
@@ -245,6 +187,7 @@ def train_bpe(
         input_path: Path to the training corpus
         vocab_size: Total vocabulary size (including special tokens)
         special_tokens: List of special tokens to add to vocabulary
+        log_every: Print progress every N merges (0 disables logging)
 
     Returns:
         vocab: Mapping from token ID to token bytes
@@ -264,24 +207,170 @@ def train_bpe(
     # Pre-tokenize the corpus in parallel
     pre_token_counts = _pretokenize_parallel(input_path, special_tokens)
 
-    # Build initial pair counts
-    pair_counts = _get_pair_counts(pre_token_counts)
+    # Build sequence objects
+    sequences: list[_Seq] = []
+    for token_seq, count in pre_token_counts.items():
+        sequences.append(_Seq(list(token_seq), count))
 
-    # Compute BPE merges
+    pair_counts: dict[tuple[bytes, bytes], int] = {}
+    pair_occurrences: dict[tuple[bytes, bytes], set[tuple[int, int]]] = defaultdict(set)
+
+    for seq_id, seq in enumerate(sequences):
+        if len(seq.sym) < 2:
+            continue
+        i = 0
+        while i != -1 and seq.next[i] != -1:
+            j = seq.next[i]
+            pair = (seq.sym[i], seq.sym[j])
+            pair_counts[pair] = pair_counts.get(pair, 0) + seq.weight
+            pair_occurrences[pair].add((seq_id, i))
+            i = j
+
+    # Buckets by count for correct lexicographic tie-breaking
+    count_to_pairs: dict[int, set[tuple[bytes, bytes]]] = defaultdict(set)
+    count_heap: list[int] = []
+    for pair, count in pair_counts.items():
+        count_to_pairs[count].add(pair)
+    for count in count_to_pairs.keys():
+        heapq.heappush(count_heap, -count)
+
     merges: list[tuple[bytes, bytes]] = []
 
-    while idx < vocab_size:
-        if not pair_counts:
+    def _update_pair(pair: tuple[bytes, bytes], delta: int) -> None:
+        old_count = pair_counts.get(pair, 0)
+        if old_count > 0:
+            bucket = count_to_pairs.get(old_count)
+            if bucket is not None:
+                bucket.discard(pair)
+                if not bucket:
+                    count_to_pairs.pop(old_count, None)
+
+        new_count = old_count + delta
+        if new_count > 0:
+            pair_counts[pair] = new_count
+            count_to_pairs[new_count].add(pair)
+            heapq.heappush(count_heap, -new_count)
+        else:
+            pair_counts.pop(pair, None)
+
+    total_merges_target = max(0, vocab_size - (len(special_tokens) + 256))
+    start_time = None
+    if log_every:
+        import time
+        start_time = time.time()
+
+    while idx < vocab_size and count_heap:
+        # Find best valid count bucket, then pick lexicographically greatest pair
+        best_pair = None
+        best_count = 0
+        while count_heap:
+            count = -heapq.heappop(count_heap)
+            bucket = count_to_pairs.get(count)
+            if not bucket:
+                continue
+            best_pair = max(bucket)
+            best_count = count
             break
 
-        # Find the most frequent pair (break ties by lexicographic order)
-        best_pair = max(pair_counts.keys(), key=lambda p: (pair_counts[p], p))
+        if best_pair is None:
+            break
 
-        pre_token_counts = _merge_pair(pre_token_counts, best_pair, pair_counts)
-
-        # Add to merges and vocabulary
+        a, b = best_pair
+        merged_sym = a + b
         merges.append(best_pair)
-        vocab[idx] = best_pair[0] + best_pair[1]
+        vocab[idx] = merged_sym
         idx += 1
+
+        # Always log the first few merges for sanity.
+        if len(merges) <= 10:
+            print(
+                f"[train_bpe] merge#{len(merges)} pair={best_pair} "
+                f"count={best_count}"
+            )
+
+        if log_every and (len(merges) % log_every == 0):
+            import time
+            now = time.time()
+            elapsed = now - (start_time or now)
+            done = len(merges)
+            if done > 0 and total_merges_target > 0 and elapsed > 0:
+                rate = done / elapsed
+                remaining = total_merges_target - done
+                eta = remaining / rate if rate > 0 else float("inf")
+                print(
+                    f"[train_bpe] merges={done}/{total_merges_target} "
+                    f"rate={rate:.2f}/s eta={eta/60.0:.1f}m"
+                )
+
+        occ = list(pair_occurrences.get(best_pair, ()))
+        pair_occurrences[best_pair].clear()
+
+        occ_by_seq: dict[int, list[int]] = defaultdict(list)
+        for seq_id, i in occ:
+            occ_by_seq[seq_id].append(i)
+
+        for seq_id, positions in occ_by_seq.items():
+            seq = sequences[seq_id]
+            positions.sort()
+            for i in positions:
+                if i == -1 or not seq.alive[i]:
+                    continue
+                j = seq.next[i]
+                if j == -1 or not seq.alive[j]:
+                    continue
+                if seq.sym[i] != a or seq.sym[j] != b:
+                    continue
+
+                w = seq.weight
+                left = seq.prev[i]
+                right = seq.next[j]
+
+                # Decrement old pairs
+                if left != -1:
+                    left_sym = seq.sym[left]
+                    old_pair = (left_sym, a)
+                    _update_pair(old_pair, -w)
+                    pair_occurrences[old_pair].discard((seq_id, left))
+                else:
+                    left_sym = None
+
+                old_pair = (a, b)
+                _update_pair(old_pair, -w)
+
+                if right != -1:
+                    right_sym = seq.sym[right]
+                    old_pair = (b, right_sym)
+                    _update_pair(old_pair, -w)
+                    pair_occurrences[old_pair].discard((seq_id, j))
+                else:
+                    right_sym = None
+
+                # Merge nodes i and j
+                seq.sym[i] = merged_sym
+                seq.alive[j] = False
+                seq.next[i] = right
+                if right != -1:
+                    seq.prev[right] = i
+
+                # Add new pairs
+                if left != -1 and left_sym is not None:
+                    new_pair = (left_sym, merged_sym)
+                    _update_pair(new_pair, w)
+                    pair_occurrences[new_pair].add((seq_id, left))
+
+                if right != -1 and right_sym is not None:
+                    new_pair = (merged_sym, right_sym)
+                    _update_pair(new_pair, w)
+                    pair_occurrences[new_pair].add((seq_id, i))
+
+                # Handle overlapping occurrence when a == b
+                if a == b and right != -1 and right_sym == b:
+                    # The pair starting at j is invalidated by this merge.
+                    _update_pair(best_pair, -w)
+                    pair_occurrences[best_pair].discard((seq_id, j))
+
+        # Keep heap growth bounded by skipping when no counts left
+        if best_count <= 0:
+            break
 
     return vocab, merges

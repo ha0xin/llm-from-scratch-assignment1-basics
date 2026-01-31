@@ -1,0 +1,11 @@
+# Tokenizer Experiments
+
+(a) Compression ratio (bytes/token) on 10 sampled docs: TinyStories tokenizer on TinyStories = 4.105; OWT tokenizer on OWT = 4.348.
+
+(b) OWT sample tokenized with TinyStories tokenizer: 3.240 bytes/token, which is lower than the OWT tokenizer (more tokens per byte), as expected for a smaller, less matched vocab.
+
+(c) Throughput (tokenizer only, in-memory): 955804.37 bytes/sec on 50.8 MB sample. Estimated time to tokenize 825GB (Pile) ≈ 257.4 hours (~10.7 days).
+
+(d) uint16 is appropriate because vocab sizes are <= 32K, so all token IDs fit in 16 bits (0..65535), which halves storage vs int32.
+
+Dataset tokenization not run in this script invocation. Use --tokenize-datasets to produce uint16 files.
