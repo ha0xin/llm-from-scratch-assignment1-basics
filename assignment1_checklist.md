@@ -30,7 +30,7 @@
 - [x] OWT BPE 训练（32k）
 - [x] tokenizer_experiments（压缩率、吞吐估计、说明）
 - [x] 自研 tokenizer 吞吐优化（仅自研实现，无外部 tokenizer）
-- [~] 全量 train/valid 数据 tokenization 到 uint16（Slurm 运行中）
+- [x] 全量 train/valid 数据 tokenization 到 uint16
 
 ## C. LM 实验（TinyStories）
 
