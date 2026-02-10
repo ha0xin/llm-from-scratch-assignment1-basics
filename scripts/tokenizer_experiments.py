@@ -94,8 +94,8 @@ def _read_text_chunks(path: str, max_bytes: int, chunk_size: int = 1 << 20):
 def _measure_throughput(tokenizer: Tokenizer, chunks: list[str], total_bytes: int):
     start = time.perf_counter()
     token_count = 0
-    for _tok in tokenizer.encode_iterable(chunks):
-        token_count += 1
+    for chunk in chunks:
+        token_count += len(tokenizer.encode(chunk))
     elapsed = time.perf_counter() - start
     bps = total_bytes / elapsed if elapsed > 0 else float("inf")
     return {

@@ -4,7 +4,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import queue
+import threading
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 import numpy as np
@@ -35,23 +38,68 @@ def load_merges(path: str | os.PathLike) -> list[tuple[bytes, bytes]]:
     return merges
 
 
-def iter_docs(path: str | os.PathLike, delimiter: str = "<|endoftext|>", chunk_chars: int = 4 << 20):
+def _iter_file_chunks(path: str | os.PathLike, chunk_chars: int) -> Iterator[str]:
     with open(path, "r", encoding="utf-8", errors="replace") as f:
-        buf = ""
         while True:
             chunk = f.read(chunk_chars)
             if not chunk:
-                break
-            buf += chunk
-            parts = buf.split(delimiter)
-            for part in parts[:-1]:
-                txt = part.strip()
-                if txt:
-                    yield txt
-            buf = parts[-1]
-        tail = buf.strip()
-        if tail:
-            yield tail
+                return
+            yield chunk
+
+
+def _iter_file_chunks_prefetch(
+    path: str | os.PathLike, chunk_chars: int, prefetch_chunks: int
+) -> Iterator[str]:
+    q: queue.Queue[str | None] = queue.Queue(maxsize=max(prefetch_chunks, 1))
+    sentinel = None
+    error: list[BaseException] = []
+
+    def _reader() -> None:
+        try:
+            for chunk in _iter_file_chunks(path=path, chunk_chars=chunk_chars):
+                q.put(chunk)
+        except BaseException as exc:  # pragma: no cover - defensive path
+            error.append(exc)
+        finally:
+            q.put(sentinel)
+
+    t = threading.Thread(target=_reader, daemon=True)
+    t.start()
+    while True:
+        item = q.get()
+        if item is sentinel:
+            break
+        yield item
+    t.join()
+    if error:
+        raise RuntimeError("prefetch reader failed") from error[0]
+
+
+def iter_docs(
+    path: str | os.PathLike,
+    delimiter: str = "<|endoftext|>",
+    chunk_chars: int = 4 << 20,
+    prefetch_chunks: int = 0,
+) -> Iterator[str]:
+    chunk_iter: Iterator[str]
+    if prefetch_chunks > 0:
+        chunk_iter = _iter_file_chunks_prefetch(
+            path=path, chunk_chars=chunk_chars, prefetch_chunks=prefetch_chunks
+        )
+    else:
+        chunk_iter = _iter_file_chunks(path=path, chunk_chars=chunk_chars)
+
+    buf = ""
+    for chunk in chunk_iter:
+        buf += chunk
+        parts = buf.split(delimiter)
+        for part in parts[:-1]:
+            if part:
+                yield part
+        buf = parts[-1]
+
+    if buf:
+        yield buf
 
 
 def tokenize_streaming(
@@ -60,6 +108,8 @@ def tokenize_streaming(
     output_path: str | os.PathLike,
     delimiter: str,
     flush_every_tokens: int = 1_000_000,
+    chunk_chars: int = 4 << 20,
+    prefetch_chunks: int = 0,
 ) -> dict[str, float]:
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -75,22 +125,28 @@ def tokenize_streaming(
     total_docs = 0
     total_bytes = 0
     buffer: list[int] = []
+    encode_doc = tokenizer.encode
 
     with open(out_path, "wb") as wf:
-        for doc in iter_docs(input_path, delimiter=delimiter):
+        for doc in iter_docs(
+            path=input_path,
+            delimiter=delimiter,
+            chunk_chars=chunk_chars,
+            prefetch_chunks=prefetch_chunks,
+        ):
             total_docs += 1
             total_bytes += len(doc.encode("utf-8"))
-            buffer.extend(tokenizer.encode(doc))
+            buffer.extend(encode_doc(doc))
             buffer.extend(eos_tokens)
 
             if len(buffer) >= flush_every_tokens:
-                arr = np.asarray(buffer, dtype=np.uint16)
+                arr = np.array(buffer, dtype=np.uint16)
                 arr.tofile(wf)
                 total_tokens += int(arr.size)
                 buffer.clear()
 
         if buffer:
-            arr = np.asarray(buffer, dtype=np.uint16)
+            arr = np.array(buffer, dtype=np.uint16)
             arr.tofile(wf)
             total_tokens += int(arr.size)
             buffer.clear()
@@ -114,6 +170,18 @@ def main() -> int:
     parser.add_argument("--output", required=True, help="Output .bin path (uint16)")
     parser.add_argument("--delimiter", default="<|endoftext|>")
     parser.add_argument("--flush-every-tokens", type=int, default=1_000_000)
+    parser.add_argument(
+        "--chunk-chars",
+        type=int,
+        default=4 << 20,
+        help="Reader chunk size in characters",
+    )
+    parser.add_argument(
+        "--prefetch-chunks",
+        type=int,
+        default=0,
+        help="Number of read-ahead chunks (0 disables prefetch thread)",
+    )
     parser.add_argument("--meta-out", default="", help="Optional meta json output")
     args = parser.parse_args()
 
@@ -127,6 +195,8 @@ def main() -> int:
         output_path=args.output,
         delimiter=args.delimiter,
         flush_every_tokens=args.flush_every_tokens,
+        chunk_chars=args.chunk_chars,
+        prefetch_chunks=args.prefetch_chunks,
     )
 
     meta = {

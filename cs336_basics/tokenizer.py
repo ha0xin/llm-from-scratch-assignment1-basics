@@ -17,6 +17,9 @@ class Tokenizer:
         self.merges = merges
         self.special_tokens = special_tokens or []
         self._special_set = set(self.special_tokens)
+        # Cache merged pre-token string -> token ids for much faster repeated encoding.
+        self._bpe_cache: dict[str, tuple[int, ...]] = {}
+        self._bpe_cache_limit = 200_000
 
         # Tokenizer should append them to the vocabulary if they aren’t already there
         for token in self._special_set:
@@ -26,6 +29,9 @@ class Tokenizer:
         # Build reverse vocab: bytes -> id
         # We assume vocab is bijective
         self._bytes_to_id: dict[bytes, int] = {v: k for k, v in vocab.items()}
+        self._single_byte_ids: list[int] = [
+            self._bytes_to_id[bytes([i])] for i in range(256)
+        ]
         self._special_str_to_id = {
             s: self._bytes_to_id[s.encode("utf-8")] for s in self._special_set
         }
@@ -34,6 +40,17 @@ class Tokenizer:
         self._merge_rank: dict[tuple[bytes, bytes], int] = {
             pair: i for i, pair in enumerate(merges)
         }
+        # Fast path for BPE over token ids: packed key = (left_id << 32) | right_id
+        self._merge_rank_key: dict[int, int] = {}
+        self._merge_result_id_key: dict[int, int] = {}
+        for rank, (a, b) in enumerate(merges):
+            left_id = self._bytes_to_id[a]
+            right_id = self._bytes_to_id[b]
+            key = (left_id << 32) | right_id
+            self._merge_rank_key[key] = rank
+            merged_id = self._bytes_to_id.get(a + b)
+            if merged_id is not None:
+                self._merge_result_id_key[key] = merged_id
 
         # Build special tokens pattern (longer tokens first for greedy matching)
         if self.special_tokens:
@@ -41,51 +58,69 @@ class Tokenizer:
             self._special_pattern = re.compile(
                 "(" + "|".join(re.escape(t) for t in sorted_tokens) + ")"
             )
+            self._special_literals = tuple(sorted_tokens)
         else:
             self._special_pattern = None
+            self._special_literals = ()
 
-    def _apply_bpe(self, token_bytes: bytes) -> list[bytes]:
-        """Apply BPE merges to a sequence of bytes.
+    def _split_special_parts(self, text: str):
+        if self._special_pattern:
+            # Avoid regex split unless the text actually contains one of the literals.
+            if any(tok in text for tok in self._special_literals):
+                return self._special_pattern.split(text)
+        return (text,)
+
+    def _apply_bpe_ids(self, token_bytes: bytes) -> list[int]:
+        """Apply BPE merges to a pre-token and return token IDs.
 
         Args:
             token_bytes: The bytes to tokenize
 
         Returns:
-            List of merged byte sequences
+            List of merged token IDs
         """
         if len(token_bytes) == 0:
             return []
 
-        # Start with individual bytes
-        tokens = [bytes([b]) for b in token_bytes]
+        # Start with byte token ids.
+        single_byte_ids = self._single_byte_ids
+        tokens = [single_byte_ids[b] for b in token_bytes]
+        merge_rank_key = self._merge_rank_key
+        merge_result_id_key = self._merge_result_id_key
 
         while len(tokens) >= 2:
             # Find the pair with lowest merge rank (highest priority)
-            best_pair = None
-            best_rank = float("inf")
+            best_key = None
+            best_rank = 1 << 60
 
-            for i in range(len(tokens) - 1):
-                pair = (tokens[i], tokens[i + 1])
-                if pair in self._merge_rank:
-                    rank = self._merge_rank[pair]
-                    if rank < best_rank:
-                        best_rank = rank
-                        best_pair = pair
+            left = tokens[0]
+            for idx in range(1, len(tokens)):
+                right = tokens[idx]
+                key = (left << 32) | right
+                rank = merge_rank_key.get(key)
+                if rank is not None and rank < best_rank:
+                    best_rank = rank
+                    best_key = key
+                left = right
 
-            if best_pair is None:
+            if best_key is None:
                 break
 
             # Merge all occurrences of the best pair
-            merged = best_pair[0] + best_pair[1]
+            merged_id = merge_result_id_key.get(best_key)
+            if merged_id is None:
+                break
+            best_left = best_key >> 32
+            best_right = best_key & 0xFFFFFFFF
             new_tokens = []
             i = 0
             while i < len(tokens):
                 if (
                     i < len(tokens) - 1
-                    and tokens[i] == best_pair[0]
-                    and tokens[i + 1] == best_pair[1]
+                    and tokens[i] == best_left
+                    and tokens[i + 1] == best_right
                 ):
-                    new_tokens.append(merged)
+                    new_tokens.append(merged_id)
                     i += 2
                 else:
                     new_tokens.append(tokens[i])
@@ -93,6 +128,19 @@ class Tokenizer:
             tokens = new_tokens
 
         return tokens
+
+    def _encode_pretoken_ids(self, pre_token: str) -> tuple[int, ...]:
+        cached = self._bpe_cache.get(pre_token)
+        if cached is not None:
+            return cached
+
+        pre_token_bytes = pre_token.encode("utf-8")
+        token_ids = tuple(self._apply_bpe_ids(pre_token_bytes))
+
+        if len(self._bpe_cache) >= self._bpe_cache_limit:
+            self._bpe_cache.clear()
+        self._bpe_cache[pre_token] = token_ids
+        return token_ids
     
     def _encode_iter(self, text: str):
         """Encode text into token IDs, yielding them one at a time.
@@ -104,20 +152,39 @@ class Tokenizer:
         if not text:
             return
 
-        parts = self._special_pattern.split(text) if self._special_pattern else [text]
+        special_set = self._special_set
+        special_str_to_id = self._special_str_to_id
+        encode_pretoken_ids = self._encode_pretoken_ids
 
-        for part in parts:
+        for part in self._split_special_parts(text):
             if not part:
                 continue
 
-            if part in self._special_set:
-                yield self._special_str_to_id[part]
+            if part in special_set:
+                yield special_str_to_id[part]
                 continue
 
             for m in PAT_RE.finditer(part):
-                pre_token_bytes = m.group().encode("utf-8")
-                for tok in self._apply_bpe(pre_token_bytes):
-                    yield self._bytes_to_id[tok]
+                yield from encode_pretoken_ids(m.group())
+
+    def _encode_to_list(self, text: str) -> list[int]:
+        if not text:
+            return []
+
+        out: list[int] = []
+        special_set = self._special_set
+        special_str_to_id = self._special_str_to_id
+        encode_pretoken_ids = self._encode_pretoken_ids
+
+        for part in self._split_special_parts(text):
+            if not part:
+                continue
+            if part in special_set:
+                out.append(special_str_to_id[part])
+                continue
+            for m in PAT_RE.finditer(part):
+                out.extend(encode_pretoken_ids(m.group()))
+        return out
 
     def encode(self, text: str) -> list[int]:
         """Encode text into a sequence of token IDs.
@@ -128,7 +195,7 @@ class Tokenizer:
         Returns:
             List of token IDs
         """
-        return list(self._encode_iter(text))
+        return self._encode_to_list(text)
 
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
         """Encode an iterable of strings, yielding token IDs lazily.

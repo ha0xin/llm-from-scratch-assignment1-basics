@@ -1,0 +1,13 @@
+{
+  "input": "/data/share/hw1-data/TinyStoriesV2-GPT4-valid.txt",
+  "vocab": "/home/stu2200011091/llm-from-scratch-assignment1-basics/artifacts/bpe/tinystories/vocab.jsonl",
+  "merges": "/home/stu2200011091/llm-from-scratch-assignment1-basics/artifacts/bpe/tinystories/merges.jsonl",
+  "output": "/home/stu2200011091/llm-from-scratch-assignment1-basics/artifacts/experiments/tokenize_valid_old.bin",
+  "delimiter": "<|endoftext|>",
+  "elapsed_sec": 2.2529997060773894,
+  "total_tokens": 5465884.0,
+  "total_docs": 27631.0,
+  "bytes_processed": 22143411.0,
+  "tokens_per_sec": 2426047.364878018,
+  "bytes_per_sec": 9828412.733596418
+}
