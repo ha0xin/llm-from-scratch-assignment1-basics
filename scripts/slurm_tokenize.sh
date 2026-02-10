@@ -9,7 +9,11 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+REPO_DIR="${SLURM_SUBMIT_DIR:-}"
+if [ -z "$REPO_DIR" ]; then
+  REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+fi
+cd "$REPO_DIR"
 mkdir -p slurm_logs logs
 
 echo "[tokenize] host=$(hostname) date=$(date -Iseconds)"
