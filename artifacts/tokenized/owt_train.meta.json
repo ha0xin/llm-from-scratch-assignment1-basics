@@ -1,0 +1,13 @@
+{
+  "input": "/data/share/hw1-data/owt_train.txt",
+  "vocab": "/home/stu2200011091/llm-from-scratch-assignment1-basics/artifacts/bpe/owt/vocab.jsonl",
+  "merges": "/home/stu2200011091/llm-from-scratch-assignment1-basics/artifacts/bpe/owt/merges.jsonl",
+  "output": "/home/stu2200011091/llm-from-scratch-assignment1-basics/artifacts/tokenized/owt_train.bin",
+  "delimiter": "<|endoftext|>",
+  "elapsed_sec": 1869.4956182700116,
+  "total_tokens": 2727120452.0,
+  "total_docs": 2399397.0,
+  "bytes_processed": 11889318898.0,
+  "tokens_per_sec": 1458746.6401893012,
+  "bytes_per_sec": 6359639.88458133
+}
