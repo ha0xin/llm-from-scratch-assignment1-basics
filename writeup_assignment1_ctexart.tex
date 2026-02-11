@@ -44,123 +44,98 @@
   captionpos=b
 }
 
-\title{CS336 Assignment 1（中文）\\\large 基于 \texttt{ctexart} 的完整作业文档}
+\title{CS336 Assignment 1 Writeup}
 \author{ha0xin}
-\date{2026-02-11}
+\date{2026-02-12}
 
 \begin{document}
 \maketitle
 \tableofcontents
 \newpage
 
-\section{复现与提交信息}
-
-\begin{itemize}
-  \item 仓库：\texttt{git@github.com:ha0xin/llm-from-scratch-assignment1-basics.git}
-  \item 环境管理：\texttt{uv sync}
-  \item 数据路径：\texttt{/data/share/hw1-data}
-  \item Slurm 约束：单作业时限 12h，内存上限 200GB
-  \item 测试结果（lfs）：\texttt{47 passed, 1 xpassed}
-\end{itemize}
-
-本文档按 handout 的 deliverable 组织，强调\textbf{结论 + 计算过程 + 代码与图表证据}，而不是实验流水账。
-
 \section{Unicode、BPE 与 Tokenizer 题目}
 
-\subsection{unicode1 与 unicode2}
+\subsection{Problem \texttt{unicode1} 与 \texttt{unicode2}}
 
 \begin{enumerate}
-  \item \texttt{chr(0)} 返回 NUL（\texttt{U+0000}）。
-  \item \texttt{repr(chr(0))} 显示转义形式（如 \texttt{"\\textbackslash x00"}），\texttt{print(chr(0))} 基本不可见。
+  \item \texttt{chr(0)} 返回 ASCII 的 NUL（\texttt{U+0000}）。
+  \item \texttt{repr(chr(0))} 显示其转义形式（如 \texttt{"\textbackslash x00"}），而 \texttt{print(chr(0))} 不可见。
   \item NUL 在字符串中通常作为不可见控制字符存在，很多显示与处理链路会忽略或特殊处理。
   \item UTF-8 相比 UTF-16/UTF-32 在网页文本上更紧凑、生态兼容最好，适合字节级 tokenizer。
-  \item 错误 UTF-8 解码函数逐字节解码会破坏多字节字符，例如 \texttt{b'\\xe7\\x89\\x9b'}（“牛”）会失败或错误。
-  \item 非法两字节序列示例：\texttt{b'\\xc0\\xaf'}（过长编码，不是合法 UTF-8）。
+  \item 错误 UTF-8 解码函数逐字节解码会破坏多字节字符，例如 \verb|b'\xe7\x89\x9b'|（“牛”）会失败或错误。
+  \item 非法两字节序列示例：\verb|b'\xc0\xaf'|
 \end{enumerate}
 
-\subsection{BPE 训练结果与分析}
+\subsection{BPE 训练结果与分析 （Problem \texttt{train\_bpe\_*}）}
 
 \subsubsection{TinyStories 10k}
 
-从 \texttt{artifacts/bpe/tinystories/meta.json}：
-\begin{itemize}
-  \item 训练耗时：\SI{36.58}{s}
-  \item 峰值内存：\SI{254.65}{MB}
-\end{itemize}
+训练耗时：\SI{36.58}{s}，峰值内存：\SI{254.65}{MB}， 最长 token：\texttt{' accomplishment'}（15 bytes，含前导空格）
 
-从 \texttt{artifacts/bpe/tinystories/vocab.jsonl} 统计：
-\begin{itemize}
-  \item 最长 token：\texttt{' accomplishment'}（15 bytes）
-\end{itemize}
-
-该最长 token 语义自然，说明 BPE 在该语域下学到的是高频可解释子词。
+该最长 token 语义自然，BPE 在该语域下学到的是高频可解释子词。
 
 \subsubsection{OWT 32k}
 
-从 \texttt{artifacts/bpe/owt/meta.json}：
-\begin{itemize}
-  \item 训练耗时：\SI{836.67}{s}（约 \SI{13.94}{min}）
-  \item 峰值内存：\SI{17777.30}{MB}（约 \SI{17.36}{GB}）
-\end{itemize}
+训练耗时：\SI{836.67}{s}，峰值内存：\SI{17777.30}{MB}，最长 token 长度 64 bytes，内容为：\\
+\texttt{ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ}
 
-从 \texttt{artifacts/bpe/owt/vocab.jsonl} 统计：
-\begin{itemize}
-  \item 最长 token 长度 64 bytes，内容近似 \texttt{ÃÂÃÂ...}（编码噪声片段）
-\end{itemize}
-
-这与网页语料的噪声与编码伪影一致：统计高频不一定语义可解释。
+这是网页语料的噪声（可能是字符串解码错误）造成的。
 
 \subsubsection{训练瓶颈说明}
 
-BPE 训练主耗时来自预分词与 pair 计数维护。代码实现中：
-\begin{itemize}
-  \item 预分词：\texttt{\_pretokenize\_parallel}
-  \item 增量更新：\texttt{pair\_counts}/\texttt{pair\_occurrences} 与 \texttt{\_update\_pair}
-\end{itemize}
+通过Profile, BPE 训练主耗时来自预分词与 pair 计数维护。分别对应 \texttt{\_pretokenize\_parallel} 和 \texttt{pair\_counts}/\texttt{pair\_occurrences} 与 \texttt{\_update\_pair}。
 
-\subsection{Tokenizer 实验（压缩率、吞吐、uint16）}
-
-依据 \texttt{artifacts/experiments/throughput\_valid\_32mb\_own\_only\_v4/tokenizer\_experiments.json} 与
-\texttt{artifacts/experiments/throughput\_tinyvalid\_own\_only\_v3/tokenizer\_experiments.json}：
+\subsection{Tokenizer 实验（Problem \texttt{tokenizer\_experiments}）}
 
 \begin{itemize}
-  \item TinyStories tokenizer on TinyStories：\SI{4.248}{bytes/token}
-  \item OWT tokenizer on OWT：\SI{4.682}{bytes/token}
-  \item OWT 样本用 TinyStories tokenizer：\SI{3.261}{bytes/token}
-  \item OWT valid 32MiB 编码吞吐：\SI{7.60e6}{bytes/s}（约 \SI{7.25}{MiB/s}）
-  \item TinyStories valid 编码吞吐：\SI{1.14e7}{bytes/s}（约 \SI{10.90}{MiB/s}）
+  \item 将 TinyStories tokenizer 用于 TinyStories 的压缩率：\SI{4.248}{bytes/token}
+  \item 将 OWT tokenizer 用于 OWT 的压缩率：\SI{4.682}{bytes/token}
+  \item OWT 样本用 TinyStories tokenizer：\SI{3.261}{bytes/token}，我们发现压缩率相比用自身 tokenizer 降低了。
+  \item OWT valid 编码吞吐： \SI{7.25}{MiB/s}
+  \item TinyStories valid 编码吞吐：\SI{10.90}{MiB/s}
 \end{itemize}
 
-Pile（825GB）耗时估算：
+Pile 耗时估算：
 \[
   t \approx \frac{825\times 1024^3}{7.6011956\times 10^6} \approx 1.165\times 10^5\,\text{s}
   \approx 1.35\,\text{days}.
 \]
 
-\paragraph{为什么用 \texttt{uint16}}
-词表规模最大 32k，token id 全在 \([0,65535]\) 内，\texttt{uint16} 足够；相较 \texttt{int32}，序列文件体积近似减半，I/O 更高效。
+为什么用 \texttt{uint16}：词表规模最大 32k，token id 全在 \([0,65535]\) 内，\texttt{uint16} 足够且高效。
 
-\section{实现代码展示（关键函数）}
+% \section{实现代码展示（关键片段）}
 
-\subsection{BPE 训练核心实现}
+% \subsection{训练参数入口与 FFN 选择}
 
-\lstinputlisting[style=pythonstyle,caption={\texttt{train\_bpe} 核心逻辑},firstline=178,lastline=340]{cs336_basics/bpe.py}
+% \lstinputlisting[
+%   style=pythonstyle,
+%   caption={\texttt{scripts/train\_lm.py}: 命令行参数（\texttt{--d-ff}, \texttt{--ffn-type}）与模型构建},
+%   firstline=350,
+%   lastline=447
+% ]{scripts/train_lm.py}
 
-\subsection{Tokenizer 编码快路径与缓存}
+% \subsection{SwiGLU / SiLU 分支实现}
 
-\lstinputlisting[style=pythonstyle,caption={Tokenizer 的 ID 级 merge 与缓存编码},firstline=73,lastline=199]{cs336_basics/tokenizer.py}
+% \lstinputlisting[
+%   style=pythonstyle,
+%   caption={\texttt{scripts/train\_lm.py}: \texttt{ffn\_type} 分支（SwiGLU vs SiLU）},
+%   firstline=141,
+%   lastline=165
+% ]{scripts/train_lm.py}
 
-\subsection{AdamW 与余弦学习率}
+% \subsection{实验汇总数据重建脚本}
 
-\lstinputlisting[style=pythonstyle,caption={AdamW 与 cosine schedule 实现},firstline=5,lastline=72]{cs336_basics/optim.py}
+% \lstinputlisting[
+%   style=pythonstyle,
+%   caption={\texttt{scripts/refresh\_assignment1\_reports.py}: 发散/批量/消融汇总},
+%   firstline=113,
+%   lastline=207
+% ]{scripts/refresh_assignment1_reports.py}
 
-\subsection{训练循环与文本生成}
-
-\lstinputlisting[style=pythonstyle,caption={训练循环、评估与生成},firstline=314,lastline=603]{scripts/train_lm.py}
 
 \section{计算题详细推导}
 
-\subsection{Transformer Accounting}
+\subsection{Problem \texttt{transformer\_accounting}}
 
 \subsubsection{参数量推导（GPT-2 XL-shaped）}
 
@@ -239,7 +214,7 @@ gpt2-xl     & 22.30\% & 7.14\%  & 66.91\% & 3.65\%  \\
 
 结论：模型越大（固定 \(T\)），FFN 与投影占比上升，\(T^2\) 注意力和 LM Head 占比下降。
 
-\subsubsection{上下文扩展到 \(T=16384\)}
+\subsubsection{上下文扩展到 T=16384}
 
 GPT-2 XL-shaped 时：
 \[
@@ -309,22 +284,25 @@ F_{step}\approx 3F_{forward}+cP
 
 \section{训练实验与图表}
 
-\subsection{学习率扫描（TinyStories）}
+\subsection{学习率扫描与发散证据（TinyStories）}
 
 \begin{table}[H]
 \centering
 \caption{Learning Rate Sweep（TinyStories）}
-\begin{tabular}{rr}
+\begin{tabular}{rrl}
 \toprule
-lr & best val loss \\
+lr & best val loss & 备注 \\
 \midrule
-1e-4 & 2.1700 \\
-3e-4 & 1.7620 \\
-1e-3 & 1.5593 \\
-3e-3 & 1.6799 \\
-1e-2 & 2.5253 \\
-3e-2 & 3.7422 \\
-1e-1 & 4.4049 \\
+1e-4 & 2.1700 & 稳定收敛 \\
+3e-4 & 1.7620 & 稳定收敛 \\
+1e-3 & 1.5593 & 最优区间 \\
+3e-3 & 1.6799 & 开始退化 \\
+1e-2 & 2.5253 & 明显退化 \\
+3e-2 & 3.7422 & 高损失不稳定 \\
+1e-1 & 4.4049 & 高损失不稳定 \\
+3e-1 & 4.2369 & 出现尖峰（max val=33.63） \\
+1e0  & 9.2687 & 发散（max val=149.86） \\
+3e0  & 9.2687 & 发散（max val=876.86） \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -346,19 +324,34 @@ lr & best val loss \\
   \caption{TinyStories 学习率扫描（训练集）}
 \end{figure}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.78\textwidth]{artifacts/figures/tinystories_lr_divergence_val.png}
+  \caption{高学习率发散探测（验证集）}
+\end{figure}
+
+\noindent 发散判据采用验证损失相对初始值的显著放大。补跑结果如下：
+\begin{itemize}
+  \item \texttt{lr=1.0}: \(\,149.86 / 9.27 \approx 16.17\,\)
+  \item \texttt{lr=3.0}: \(\,876.86 / 9.27 \approx 94.61\,\)
+\end{itemize}
+对应日志：\texttt{slurm\_logs/train\_lm\_1478.out}、\texttt{slurm\_logs/train\_lm\_1479.out}。
+
 \subsection{Batch Size 实验}
 
 \begin{table}[H]
 \centering
-\caption{同 5k steps 下的 batch size 对比}
-\begin{tabular}{rrrr}
+\caption{batch size 从 1 到显存上限探测}
+\begin{tabular}{rrlrrl}
 \toprule
-batch & lr & best val loss & tokens seen \\
+batch & lr & status & best val loss & tokens seen & 备注 \\
 \midrule
-1   & 3e-4   & 2.9371 & 1.28M \\
-32  & 1e-3   & 1.6665 & 40.96M \\
-64  & 1e-3   & 1.5593 & 81.92M \\
-128 & 1.5e-3 & 1.4614 & 163.84M \\
+1   & 3e-4   & ok  & 2.9371 & 1.28M  & 可训练 \\
+32  & 1e-3   & ok  & 1.6665 & 40.96M & 可训练 \\
+64  & 1e-3   & ok  & 1.5593 & 81.92M & 可训练 \\
+128 & 1.5e-3 & ok  & 1.4614 & 163.84M & 可训练 \\
+256 & 1.5e-3 & ok  & 2.2109 & 19.66M & 显存仍可容纳（300 iter 探测） \\
+512 & 1.5e-3 & oom & - & - & 首个 forward 即 OOM \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -375,6 +368,9 @@ batch & lr & best val loss & tokens seen \\
   \caption{Batch size 对比（token-matched）}
 \end{figure}
 
+\noindent 因此在当前 32GB 显存与该模型配置下，最大可运行 batch 位于 \(256 < B_{\max} < 512\)。
+OOM 证据见 \texttt{slurm\_logs/train\_lm\_1475.err}。
+
 \subsection{消融实验}
 
 \begin{table}[H]
@@ -389,7 +385,7 @@ baseline（pre-norm + RMSNorm + RoPE + SwiGLU） & 1.5593 \\
 去 RMSNorm（lr=3e-4） & 1.7679 \\
 post-norm & 1.5553 \\
 NoPE（去 RoPE） & 1.6537 \\
-SiLU（替换 SwiGLU） & 1.6110 \\
+SiLU（替换 SwiGLU，\texttt{d\_ff=2048}） & 1.5835 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -405,6 +401,10 @@ SiLU（替换 SwiGLU） & 1.6110 \\
   \includegraphics[width=0.78\textwidth]{artifacts/figures/tinystories_rmsnorm_ablation_val.png}
   \caption{RMSNorm 消融细节曲线}
 \end{figure}
+
+\noindent 本次 SiLU 消融按 handout 要求做参数量匹配：\(
+d_{ff}=4\times d_{model}=4\times512=2048
+\)。
 
 \subsection{OpenWebText 主实验}
 
@@ -425,23 +425,22 @@ SiLU（替换 SwiGLU） & 1.6110 \\
 
 \subsection{TinyStories 生成（满足 EOT 终止）}
 
-来源：\texttt{artifacts/experiments/lm/ts\_main\_lr1e3\_20k/generated.txt}
-
-\begin{Verbatim}[fontsize=\small,frame=single]
-Once upon a time, there was a little dog named Spot. Spot was a happy dog who loved to play with his friends. One day, Spot found a big ball in the yard...
-... They all worked together and split the ball. Spot and his friends were so happy... <|endoftext|>
-\end{Verbatim}
-
+\lstinputlisting[
+  style=pythonstyle,
+  caption={TinyStories 生成样例（满足 EOT 终止）},
+  firstline=1,
+  lastline=10
+]{artifacts/experiments/lm/ts_main_lr1e3_20k/generated.txt}
 该样例编码长度 169 token，并在首个 \texttt{<|endoftext|>} 终止，满足作业要求。
 
 \subsection{OWT 生成（满足至少 256 token）}
 
-来源：\texttt{artifacts/experiments/lm/owt\_main\_lr1e3\_20k/generated.txt}
-
-\begin{Verbatim}[fontsize=\small,frame=single]
-The history of machine learning, and even that has been a significant part of our time...
-... What about the community?
-\end{Verbatim}
+\lstinputlisting[
+  style=pythonstyle,
+  caption={OWT 生成样例},
+  firstline=1,
+  lastline=10
+]{artifacts/experiments/lm/owt_main_lr1e3_20k/generated.txt}
 
 该样例编码长度 262 token，满足“至少 256 token”要求。
 
@@ -452,18 +451,5 @@ The history of machine learning, and even that has been a significant part of ou
   \item 模型容量与训练预算：17M 级模型在固定 token 预算下对 OWT 表达能力不足。
   \item 解码超参：temperature/top-k/top-p 会显著改变流畅度与多样性。
 \end{enumerate}
-
-\section{Deliverable 完成情况}
-
-完整逐题对照见 \texttt{assignment1\_deliverables\_summary.md}。
-
-当前状态：除可选 \texttt{leaderboard} 外，必做 deliverable 均已完成，并有对应代码、图表或日志证据。
-
-\section*{附：编译命令}
-
-建议使用 XeLaTeX：
-\begin{Verbatim}[fontsize=\small,frame=single]
-latexmk -xelatex writeup_assignment1_ctexart.tex
-\end{Verbatim}
 
 \end{document}
