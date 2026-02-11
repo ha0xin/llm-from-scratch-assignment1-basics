@@ -34,27 +34,27 @@
 
 ## C. LM 实验（TinyStories）
 
-- [ ] 基线训练（收敛曲线）
-- [ ] Learning rate sweep（含发散案例）
-- [ ] Batch size 对比
-- [ ] 文本生成样例
+- [x] 基线训练（收敛曲线）
+- [x] Learning rate sweep（含高学习率不稳定区间）
+- [x] Batch size 对比
+- [x] 文本生成样例
 
 ## D. LM 消融实验
 
-- [ ] 去 RMSNorm
-- [ ] post-norm vs pre-norm
-- [ ] NoPE vs RoPE
-- [ ] SwiGLU vs SiLU
+- [x] 去 RMSNorm
+- [x] post-norm vs pre-norm
+- [x] NoPE vs RoPE
+- [x] SwiGLU vs SiLU
 
 ## E. LM 实验（OWT）
 
-- [ ] OWT 主实验（学习曲线）
-- [ ] OWT 文本生成样例
+- [x] OWT 主实验（学习曲线）
+- [x] OWT 文本生成样例
 - [ ] （可选）leaderboard 提交材料
 
 ## F. 文档与交付
 
-- [~] `writeup.md`（中文，正在回填实验结果）
-- [~] `assignment1_checklist.md`（本文件）
-- [~] `deliverables_manifest.md`（原始数据/处理数据/图表/日志清单）
-- [~] 原始日志与处理结果归档
+- [x] `writeup.md`（中文）
+- [x] `assignment1_checklist.md`（本文件）
+- [x] `deliverables_manifest.md`（原始数据/处理数据/图表/日志清单）
+- [x] 原始日志与处理结果归档

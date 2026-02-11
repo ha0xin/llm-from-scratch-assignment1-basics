@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_bs32_lr1e3_tokmatch",
+  "best_val_loss": 1.576108733812968,
+  "max_iters": 10000,
+  "tokens_seen": 81920000,
+  "elapsed_sec": 235.123751640087
+}

@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_ablate_silu_lr1e3_5k",
+  "best_val_loss": 1.6109637320041656,
+  "max_iters": 5000,
+  "tokens_seen": 81920000,
+  "elapsed_sec": 240.47278613701928
+}

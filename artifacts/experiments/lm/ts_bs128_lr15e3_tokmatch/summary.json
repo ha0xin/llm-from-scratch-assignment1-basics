@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_bs128_lr15e3_tokmatch",
+  "best_val_loss": 1.5744911829630535,
+  "max_iters": 2500,
+  "tokens_seen": 81920000,
+  "elapsed_sec": 266.24776048993226
+}

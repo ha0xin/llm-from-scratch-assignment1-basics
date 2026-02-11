@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_bs32_lr1e3_5k",
+  "best_val_loss": 1.6664995431900025,
+  "max_iters": 5000,
+  "tokens_seen": 40960000,
+  "elapsed_sec": 126.9878063229844
+}

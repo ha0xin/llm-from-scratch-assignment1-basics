@@ -1,0 +1,32 @@
+[
+  {
+    "tag": "bs32_tokmatch",
+    "run": "ts_bs32_lr1e3_tokmatch",
+    "batch_size": 32,
+    "best_val_loss": 1.576108733812968,
+    "best_iter": 9500,
+    "max_iters": 10000,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 235.123751640087
+  },
+  {
+    "tag": "bs64_tokmatch",
+    "run": "ts_lr_1e3",
+    "batch_size": 64,
+    "best_val_loss": 1.5592819511890412,
+    "best_iter": 4750,
+    "max_iters": 5000,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 255.64942568400875
+  },
+  {
+    "tag": "bs128_tokmatch",
+    "run": "ts_bs128_lr15e3_tokmatch",
+    "batch_size": 128,
+    "best_val_loss": 1.5744911829630535,
+    "best_iter": 2499,
+    "max_iters": 2500,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 266.24776048993226
+  }
+]

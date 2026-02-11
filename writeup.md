@@ -109,39 +109,89 @@
 - 已在 `lfs` 提交 tokenization 作业：
   - TinyStories train/valid
   - OWT train/valid
+- 当前状态：4 个 tokenized 二进制均已完成并回传本地
+  - `artifacts/tokenized/tinystories_train.bin`
+  - `artifacts/tokenized/tinystories_valid.bin`
+  - `artifacts/tokenized/owt_train.bin`
+  - `artifacts/tokenized/owt_valid.bin`
 - 作业日志与原始输出：
   - `slurm_logs/tokenize_*.out`
   - `slurm_logs/tokenize_*.err`
 - 进度记录：
   - `logs/progress_journal.md`
 
-### 4.3 待回填实验结果
+### 4.3 TinyStories 学习率实验（已完成第一轮）
 
-- TinyStories 主实验学习曲线（目标验证损失）
-- Learning rate sweep（含至少一次发散）
-- Batch size 对比
-- 生成文本样例（>= 256 token）
-- 消融实验：
-  - 去 RMSNorm
-  - post-norm
-  - NoPE（去 RoPE）
-  - SwiGLU vs SiLU
-- OWT 主实验学习曲线与生成文本
+- 结果汇总文件：
+  - `artifacts/experiments/lm/lr_sweep_summary.json`
+  - `artifacts/experiments/lm/lr_sweep_summary.md`
+  - `artifacts/figures/tinystories_lr_sweep_val.png`
+  - `artifacts/figures/tinystories_lr_sweep_train.png`
+- 第一轮结论：
+  - 在本轮 sweep 中，`lr=1e-3` 表现最好（`best_val_loss=1.5593`，`5k` steps）。
+  - `lr=1e-4`、`3e-4` 收敛更慢；`1e-2` 及以上进入高损失平台，明显不如 `1e-3`。
+  - `3e-2` 和 `1e-1` 未出现 NaN，但训练质量显著退化，可视为超过稳定高效区间。
+- 已据此提交 TinyStories 主实验：
+  - run: `ts_main_lr1e3_20k`
+  - 目标 tokens：`64 * 20000 * 256 = 327,680,000`
+  - 目标：达到课程建议的 TinyStories 收敛区间并用于生成样例。
 
-## 5. 结果分析（待回填）
+### 4.4 TinyStories 消融实验（已完成第一轮）
+
+- 汇总文件：
+  - `artifacts/experiments/lm/ablation_summary.json`
+  - `artifacts/experiments/lm/ablation_summary.md`
+  - `artifacts/figures/tinystories_ablations_val.png`
+  - `artifacts/figures/tinystories_rmsnorm_ablation_val.png`
+- 以 `5k steps` 对比（与 baseline `ts_lr_1e3`）：
+  - baseline（pre-norm + RMSNorm + RoPE + SwiGLU）：`1.5593`
+  - 去 RMSNorm（lr=1e-3）：`1.5773`
+  - 去 RMSNorm（lr=3e-4）：`1.7679`（显著更差）
+  - post-norm：`1.5553`（本轮短程与 baseline 接近）
+  - NoPE（去 RoPE）：`1.6537`（明显变差）
+  - SiLU（替换 SwiGLU）：`1.6110`（变差）
+
+### 4.5 主实验与 Batch Size 实验（已完成）
+
+- TinyStories 主实验：
+  - run: `artifacts/experiments/lm/ts_main_lr1e3_20k`
+  - 结果：`best_val_loss=1.3730`（`iter=19999`，`tokens_seen=327,680,000`）
+  - 曲线可视化建议路径：`artifacts/figures/ts_vs_owt_main_val.png`
+- OWT 主实验：
+  - run: `artifacts/experiments/lm/owt_main_lr1e3_20k`
+  - 结果：`best_val_loss=4.0370`（`iter=19500`，`tokens_seen=327,680,000`）
+- Batch size（同为 5k steps）：
+  - 汇总：`artifacts/experiments/lm/batch_size_summary.md`
+  - 曲线：`artifacts/figures/tinystories_batch_size_val.png`
+- Batch size（token-matched，约 81.92M tokens）：
+  - 汇总：`artifacts/experiments/lm/batch_size_token_matched_summary.md`
+  - 曲线：`artifacts/figures/tinystories_batch_size_token_matched_val.png`
+
+### 4.6 生成样例（节选）
+
+- TinyStories（`ts_main_lr1e3_20k`，prompt=`Once upon a time`）：生成文本结构完整、语法自然，能形成短故事闭环；原文见 `artifacts/experiments/lm/ts_main_lr1e3_20k/generated.txt`。
+- OWT（`owt_main_lr1e3_20k`，prompt=`The history of machine learning`）：句法流畅但内容重复、论述跳跃，体现小模型在复杂开放域数据上的语义一致性不足；原文见 `artifacts/experiments/lm/owt_main_lr1e3_20k/generated.txt`。
+
+## 5. 结果分析
 
 ### 5.1 TinyStories 训练行为
 
-- 待回填。
+- `lr=1e-3` 在本实验配置下最有效，`5k` steps 即可到 `~1.56`，`20k` steps 可进一步到 `1.373`。
+- 从曲线看，`10k` steps 后收益变缓，但继续训练仍有稳定下降空间。
 
 ### 5.2 OWT 与 TinyStories 损失差异
 
-- 待回填。
+- 在相同模型规模与 token budget（`327.68M`）下，OWT 的 `val_loss` 明显高于 TinyStories（`4.037` vs `1.373`）。
+- 原因是 OWT 语料分布更复杂、词汇与主题多样性更高，小模型容量不足以在该预算下达到与 TinyStories 同等拟合度。
 
 ### 5.3 各消融项影响
 
-- 待回填。
+- 去 RoPE 与改用 SiLU 都带来稳定退化（相对 baseline）。
+- 去 RMSNorm 在 `lr=1e-3` 下仅小幅退化，但降低学习率后显著变差，说明其稳定性与学习率耦合明显。
+- post-norm 在本次 `5k` steps 窗口与 baseline 接近，但长期稳定性仍建议在更长训练中复核。
 
-## 6. 结论（待回填）
+## 6. 结论
 
-- 待在全部实验跑完后给出最终结论与建议配置。
+- 仅用自研 tokenizer 与课程实现，已完成从 BPE 到 LM 训练全链路，并在 TinyStories 达到 `val_loss <= 1.45` 目标（最终 `1.373`）。
+- 推荐 TinyStories 基线配置：`d_model=512, n_layers=4, n_heads=16, d_ff=1344, batch=64, lr=1e-3`。
+- 对 OWT，当前模型与预算下已能生成可读文本，但语义一致性与信息密度仍不足；进一步提升需要更大模型、更多训练步数或更细致的超参搜索。

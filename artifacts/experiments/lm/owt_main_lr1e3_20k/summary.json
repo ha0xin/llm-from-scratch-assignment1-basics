@@ -1,0 +1,7 @@
+{
+  "run_name": "owt_main_lr1e3_20k",
+  "best_val_loss": 4.037032103538513,
+  "max_iters": 20000,
+  "tokens_seen": 327680000,
+  "elapsed_sec": 1451.8385729800211
+}

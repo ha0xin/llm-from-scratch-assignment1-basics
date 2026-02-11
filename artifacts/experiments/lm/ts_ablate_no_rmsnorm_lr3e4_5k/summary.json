@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_ablate_no_rmsnorm_lr3e4_5k",
+  "best_val_loss": 1.7678757667541505,
+  "max_iters": 5000,
+  "tokens_seen": 81920000,
+  "elapsed_sec": 236.65781186893582
+}

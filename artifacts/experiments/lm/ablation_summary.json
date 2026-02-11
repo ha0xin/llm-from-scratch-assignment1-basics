@@ -1,0 +1,56 @@
+[
+  {
+    "tag": "baseline_lr1e3_5k",
+    "run": "ts_lr_1e3",
+    "best_val_loss": 1.5592819511890412,
+    "best_iter": 4750,
+    "max_iters": 5000,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 255.64942568400875
+  },
+  {
+    "tag": "no_rmsnorm_lr1e3_5k",
+    "run": "ts_ablate_no_rmsnorm_lr1e3_5k",
+    "best_val_loss": 1.5772861897945405,
+    "best_iter": 4750,
+    "max_iters": 5000,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 235.47502030502073
+  },
+  {
+    "tag": "no_rmsnorm_lr3e4_5k",
+    "run": "ts_ablate_no_rmsnorm_lr3e4_5k",
+    "best_val_loss": 1.7678757667541505,
+    "best_iter": 4750,
+    "max_iters": 5000,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 236.65781186893582
+  },
+  {
+    "tag": "no_rope_lr1e3_5k",
+    "run": "ts_ablate_no_rope_lr1e3_5k",
+    "best_val_loss": 1.6537433326244355,
+    "best_iter": 4750,
+    "max_iters": 5000,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 243.49250675807707
+  },
+  {
+    "tag": "postnorm_lr1e3_5k",
+    "run": "ts_ablate_postnorm_lr1e3_5k",
+    "best_val_loss": 1.555266797542572,
+    "best_iter": 4750,
+    "max_iters": 5000,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 251.35307781596202
+  },
+  {
+    "tag": "silu_lr1e3_5k",
+    "run": "ts_ablate_silu_lr1e3_5k",
+    "best_val_loss": 1.6109637320041656,
+    "best_iter": 4750,
+    "max_iters": 5000,
+    "tokens_seen": 81920000,
+    "elapsed_sec": 240.47278613701928
+  }
+]

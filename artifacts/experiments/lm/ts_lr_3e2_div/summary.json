@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_lr_3e2_div",
+  "best_val_loss": 3.742229425907135,
+  "max_iters": 400,
+  "tokens_seen": 6553600,
+  "elapsed_sec": 36.33061607996933
+}

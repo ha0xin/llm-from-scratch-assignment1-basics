@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_lr_1e4",
+  "best_val_loss": 2.169984591007233,
+  "max_iters": 5000,
+  "tokens_seen": 81920000,
+  "elapsed_sec": 253.57079660100862
+}

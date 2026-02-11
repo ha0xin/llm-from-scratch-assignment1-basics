@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_bs128_lr15e3_5k",
+  "best_val_loss": 1.4614313542842865,
+  "max_iters": 5000,
+  "tokens_seen": 163840000,
+  "elapsed_sec": 521.9639293879736
+}

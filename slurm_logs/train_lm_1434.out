@@ -1,0 +1,126 @@
+[train] host=lfs-dev date=2026-02-11T01:09:52+08:00
+[train] cuda=NVIDIA GeForce RTX 5090, 32607 MiB;
+[train] args: --run-name ts_bs1_lr3e4_5k --out-dir artifacts/experiments/lm --train-data artifacts/tokenized/tinystories_train.bin --valid-data artifacts/tokenized/tinystories_valid.bin --vocab-size 10000 --context-length 256 --d-model 512 --num-layers 4 --num-heads 16 --d-ff 1344 --batch-size 1 --max-iters 5000 --eval-interval 250 --eval-batches 40 --log-interval 50 --save-interval 500 --learning-rate 3e-4 --min-learning-rate 3e-5 --warmup-iters 200 --device cuda --dtype bfloat16 --tokenizer-vocab artifacts/bpe/tinystories/vocab.jsonl --tokenizer-merges artifacts/bpe/tinystories/merges.jsonl --generate-prompt Once upon a time --max-new-tokens 256 --top-k 50
+[iter 000000] loss=9.2590 lr=0.00e+00 tokens_seen=256 elapsed=0.5s
+[eval 000000] train_loss=9.2533 val_loss=9.2693 best_val=inf
+[iter 000050] loss=8.2444 lr=7.50e-05 tokens_seen=13056 elapsed=1.5s
+[iter 000100] loss=5.7254 lr=1.50e-04 tokens_seen=25856 elapsed=2.0s
+[iter 000150] loss=5.1121 lr=2.25e-04 tokens_seen=38656 elapsed=2.5s
+[iter 000200] loss=4.2156 lr=3.00e-04 tokens_seen=51456 elapsed=3.1s
+[iter 000250] loss=4.0169 lr=3.00e-04 tokens_seen=64256 elapsed=3.7s
+[eval 000250] train_loss=4.5674 val_loss=4.3148 best_val=9.2693
+[iter 000300] loss=4.3267 lr=3.00e-04 tokens_seen=77056 elapsed=4.7s
+[iter 000350] loss=3.8828 lr=2.99e-04 tokens_seen=89856 elapsed=5.3s
+[iter 000400] loss=4.1147 lr=2.99e-04 tokens_seen=102656 elapsed=5.9s
+[iter 000450] loss=3.4655 lr=2.98e-04 tokens_seen=115456 elapsed=6.4s
+[iter 000500] loss=4.2739 lr=2.97e-04 tokens_seen=128256 elapsed=7.0s
+[eval 000500] train_loss=4.2080 val_loss=4.0947 best_val=4.3148
+[iter 000550] loss=3.8437 lr=2.96e-04 tokens_seen=141056 elapsed=8.2s
+[iter 000600] loss=3.8967 lr=2.95e-04 tokens_seen=153856 elapsed=8.8s
+[iter 000650] loss=4.4083 lr=2.94e-04 tokens_seen=166656 elapsed=9.3s
+[iter 000700] loss=3.2066 lr=2.93e-04 tokens_seen=179456 elapsed=9.9s
+[iter 000750] loss=4.3690 lr=2.91e-04 tokens_seen=192256 elapsed=10.4s
+[eval 000750] train_loss=3.8421 val_loss=3.8259 best_val=4.0947
+[iter 000800] loss=3.8494 lr=2.90e-04 tokens_seen=205056 elapsed=11.4s
+[iter 000850] loss=3.6951 lr=2.88e-04 tokens_seen=217856 elapsed=12.0s
+[iter 000900] loss=2.7708 lr=2.86e-04 tokens_seen=230656 elapsed=12.5s
+[iter 000950] loss=4.6453 lr=2.84e-04 tokens_seen=243456 elapsed=13.1s
+[iter 001000] loss=3.8999 lr=2.82e-04 tokens_seen=256256 elapsed=13.6s
+[eval 001000] train_loss=3.6606 val_loss=3.7015 best_val=3.8259
+[iter 001050] loss=4.1332 lr=2.80e-04 tokens_seen=269056 elapsed=15.0s
+[iter 001100] loss=3.5060 lr=2.77e-04 tokens_seen=281856 elapsed=15.6s
+[iter 001150] loss=3.1622 lr=2.75e-04 tokens_seen=294656 elapsed=16.2s
+[iter 001200] loss=4.1772 lr=2.72e-04 tokens_seen=307456 elapsed=16.8s
+[iter 001250] loss=4.2613 lr=2.69e-04 tokens_seen=320256 elapsed=17.3s
+[eval 001250] train_loss=3.6143 val_loss=3.7391 best_val=3.7015
+[iter 001300] loss=3.8006 lr=2.66e-04 tokens_seen=333056 elapsed=18.0s
+[iter 001350] loss=3.3557 lr=2.64e-04 tokens_seen=345856 elapsed=18.6s
+[iter 001400] loss=3.6753 lr=2.60e-04 tokens_seen=358656 elapsed=19.1s
+[iter 001450] loss=2.7648 lr=2.57e-04 tokens_seen=371456 elapsed=19.7s
+[iter 001500] loss=3.7298 lr=2.54e-04 tokens_seen=384256 elapsed=20.3s
+[eval 001500] train_loss=3.3419 val_loss=3.3958 best_val=3.7015
+[iter 001550] loss=3.0902 lr=2.51e-04 tokens_seen=397056 elapsed=21.6s
+[iter 001600] loss=3.5302 lr=2.47e-04 tokens_seen=409856 elapsed=22.2s
+[iter 001650] loss=3.3015 lr=2.44e-04 tokens_seen=422656 elapsed=22.8s
+[iter 001700] loss=2.9082 lr=2.40e-04 tokens_seen=435456 elapsed=23.4s
+[iter 001750] loss=2.8721 lr=2.36e-04 tokens_seen=448256 elapsed=24.0s
+[eval 001750] train_loss=3.2145 val_loss=3.3265 best_val=3.3958
+[iter 001800] loss=4.1461 lr=2.32e-04 tokens_seen=461056 elapsed=25.0s
+[iter 001850] loss=3.4202 lr=2.29e-04 tokens_seen=473856 elapsed=25.5s
+[iter 001900] loss=3.2162 lr=2.25e-04 tokens_seen=486656 elapsed=26.2s
+[iter 001950] loss=3.7143 lr=2.21e-04 tokens_seen=499456 elapsed=26.8s
+[iter 002000] loss=3.5959 lr=2.17e-04 tokens_seen=512256 elapsed=27.5s
+[eval 002000] train_loss=3.3626 val_loss=3.4609 best_val=3.3265
+[iter 002050] loss=3.2479 lr=2.13e-04 tokens_seen=525056 elapsed=28.5s
+[iter 002100] loss=3.5522 lr=2.08e-04 tokens_seen=537856 elapsed=29.1s
+[iter 002150] loss=3.0872 lr=2.04e-04 tokens_seen=550656 elapsed=29.7s
+[iter 002200] loss=3.6397 lr=2.00e-04 tokens_seen=563456 elapsed=30.3s
+[iter 002250] loss=2.3954 lr=1.96e-04 tokens_seen=576256 elapsed=30.8s
+[eval 002250] train_loss=3.3337 val_loss=3.2785 best_val=3.3265
+[iter 002300] loss=2.9695 lr=1.91e-04 tokens_seen=589056 elapsed=31.9s
+[iter 002350] loss=3.3120 lr=1.87e-04 tokens_seen=601856 elapsed=32.4s
+[iter 002400] loss=3.2414 lr=1.83e-04 tokens_seen=614656 elapsed=33.0s
+[iter 002450] loss=3.2413 lr=1.78e-04 tokens_seen=627456 elapsed=33.6s
+[iter 002500] loss=2.8484 lr=1.74e-04 tokens_seen=640256 elapsed=34.2s
+[eval 002500] train_loss=3.0610 val_loss=3.0711 best_val=3.2785
+[iter 002550] loss=3.4310 lr=1.69e-04 tokens_seen=653056 elapsed=35.5s
+[iter 002600] loss=2.8308 lr=1.65e-04 tokens_seen=665856 elapsed=36.1s
+[iter 002650] loss=2.6960 lr=1.61e-04 tokens_seen=678656 elapsed=36.7s
+[iter 002700] loss=2.9274 lr=1.56e-04 tokens_seen=691456 elapsed=37.3s
+[iter 002750] loss=3.5050 lr=1.52e-04 tokens_seen=704256 elapsed=37.9s
+[eval 002750] train_loss=3.3864 val_loss=3.2389 best_val=3.0711
+[iter 002800] loss=3.3153 lr=1.47e-04 tokens_seen=717056 elapsed=38.7s
+[iter 002850] loss=2.6072 lr=1.43e-04 tokens_seen=729856 elapsed=39.3s
+[iter 002900] loss=3.5288 lr=1.39e-04 tokens_seen=742656 elapsed=39.9s
+[iter 002950] loss=2.9308 lr=1.34e-04 tokens_seen=755456 elapsed=40.5s
+[iter 003000] loss=2.5170 lr=1.30e-04 tokens_seen=768256 elapsed=41.0s
+[eval 003000] train_loss=3.4170 val_loss=3.1651 best_val=3.0711
+[iter 003050] loss=2.8139 lr=1.26e-04 tokens_seen=781056 elapsed=42.1s
+[iter 003100] loss=2.5222 lr=1.22e-04 tokens_seen=793856 elapsed=42.7s
+[iter 003150] loss=2.9687 lr=1.17e-04 tokens_seen=806656 elapsed=43.3s
+[iter 003200] loss=2.9276 lr=1.13e-04 tokens_seen=819456 elapsed=43.9s
+[iter 003250] loss=2.8558 lr=1.09e-04 tokens_seen=832256 elapsed=44.5s
+[eval 003250] train_loss=3.1531 val_loss=2.9371 best_val=3.0711
+[iter 003300] loss=2.9629 lr=1.05e-04 tokens_seen=845056 elapsed=45.5s
+[iter 003350] loss=3.4556 lr=1.01e-04 tokens_seen=857856 elapsed=46.1s
+[iter 003400] loss=3.5516 lr=9.75e-05 tokens_seen=870656 elapsed=46.7s
+[iter 003450] loss=3.4897 lr=9.37e-05 tokens_seen=883456 elapsed=47.3s
+[iter 003500] loss=3.2937 lr=9.00e-05 tokens_seen=896256 elapsed=47.9s
+[eval 003500] train_loss=3.0374 val_loss=3.1762 best_val=2.9371
+[iter 003550] loss=2.3875 lr=8.64e-05 tokens_seen=909056 elapsed=49.0s
+[iter 003600] loss=3.4368 lr=8.28e-05 tokens_seen=921856 elapsed=49.5s
+[iter 003650] loss=3.2903 lr=7.94e-05 tokens_seen=934656 elapsed=50.1s
+[iter 003700] loss=3.2130 lr=7.60e-05 tokens_seen=947456 elapsed=50.8s
+[iter 003750] loss=2.7150 lr=7.27e-05 tokens_seen=960256 elapsed=51.3s
+[eval 003750] train_loss=3.1336 val_loss=3.1839 best_val=2.9371
+[iter 003800] loss=2.8008 lr=6.95e-05 tokens_seen=973056 elapsed=52.1s
+[iter 003850] loss=2.7704 lr=6.65e-05 tokens_seen=985856 elapsed=52.7s
+[iter 003900] loss=2.7822 lr=6.35e-05 tokens_seen=998656 elapsed=53.3s
+[iter 003950] loss=3.3278 lr=6.06e-05 tokens_seen=1011456 elapsed=53.9s
+[iter 004000] loss=2.8842 lr=5.79e-05 tokens_seen=1024256 elapsed=54.4s
+[eval 004000] train_loss=3.1374 val_loss=3.0562 best_val=2.9371
+[iter 004050] loss=2.5388 lr=5.53e-05 tokens_seen=1037056 elapsed=55.5s
+[iter 004100] loss=2.9187 lr=5.28e-05 tokens_seen=1049856 elapsed=56.0s
+[iter 004150] loss=2.7570 lr=5.04e-05 tokens_seen=1062656 elapsed=56.6s
+[iter 004200] loss=2.9413 lr=4.81e-05 tokens_seen=1075456 elapsed=57.1s
+[iter 004250] loss=2.8495 lr=4.59e-05 tokens_seen=1088256 elapsed=57.7s
+[eval 004250] train_loss=3.1679 val_loss=3.0051 best_val=2.9371
+[iter 004300] loss=3.8817 lr=4.39e-05 tokens_seen=1101056 elapsed=58.4s
+[iter 004350] loss=2.1873 lr=4.20e-05 tokens_seen=1113856 elapsed=59.0s
+[iter 004400] loss=2.3179 lr=4.03e-05 tokens_seen=1126656 elapsed=59.5s
+[iter 004450] loss=2.7586 lr=3.87e-05 tokens_seen=1139456 elapsed=60.1s
+[iter 004500] loss=3.3249 lr=3.72e-05 tokens_seen=1152256 elapsed=60.7s
+[eval 004500] train_loss=3.3272 val_loss=3.1188 best_val=2.9371
+[iter 004550] loss=3.2320 lr=3.58e-05 tokens_seen=1165056 elapsed=61.7s
+[iter 004600] loss=3.1559 lr=3.46e-05 tokens_seen=1177856 elapsed=62.2s
+[iter 004650] loss=3.4480 lr=3.35e-05 tokens_seen=1190656 elapsed=62.8s
+[iter 004700] loss=2.4861 lr=3.26e-05 tokens_seen=1203456 elapsed=63.4s
+[iter 004750] loss=2.9941 lr=3.18e-05 tokens_seen=1216256 elapsed=63.9s
+[eval 004750] train_loss=3.0613 val_loss=3.0762 best_val=2.9371
+[iter 004800] loss=2.0023 lr=3.12e-05 tokens_seen=1229056 elapsed=64.7s
+[iter 004850] loss=2.7819 lr=3.07e-05 tokens_seen=1241856 elapsed=65.2s
+[iter 004900] loss=2.5929 lr=3.03e-05 tokens_seen=1254656 elapsed=65.8s
+[iter 004950] loss=2.5712 lr=3.01e-05 tokens_seen=1267456 elapsed=66.4s
+[eval 004999] train_loss=3.4984 val_loss=3.0798 best_val=2.9371
+Training summary: {"run_name": "ts_bs1_lr3e4_5k", "best_val_loss": 2.9371371805667876, "max_iters": 5000, "tokens_seen": 1280000, "elapsed_sec": 67.421041080961}
+Saved generated text to artifacts/experiments/lm/ts_bs1_lr3e4_5k/generated.txt

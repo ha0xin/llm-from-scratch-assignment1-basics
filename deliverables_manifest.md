@@ -31,6 +31,14 @@
 - `artifacts/tokenized/*.meta.json`
 - `artifacts/experiments/lm/*/summary.json`
 - `artifacts/experiments/lm/*/best_metrics.json`
+- `artifacts/experiments/lm/lr_sweep_summary.json`
+- `artifacts/experiments/lm/lr_sweep_summary.md`
+- `artifacts/experiments/lm/ablation_summary.json`
+- `artifacts/experiments/lm/ablation_summary.md`
+- `artifacts/experiments/lm/batch_size_summary.json`
+- `artifacts/experiments/lm/batch_size_summary.md`
+- `artifacts/experiments/lm/batch_size_token_matched_summary.json`
+- `artifacts/experiments/lm/batch_size_token_matched_summary.md`
 
 ## 4. 图表与可视化
 

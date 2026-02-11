@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_ablate_no_rope_lr1e3_5k",
+  "best_val_loss": 1.6537433326244355,
+  "max_iters": 5000,
+  "tokens_seen": 81920000,
+  "elapsed_sec": 243.49250675807707
+}
