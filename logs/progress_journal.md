@@ -14,3 +14,4 @@
 2026-02-11 01:11:19 CST | submitted TinyStories batch-size runs: 1434(bs=1,lr=3e-4), 1435(bs=32,lr=1e-3), 1436(bs=128,lr=1.5e-3,pending).
 2026-02-11 01:23:39 CST | submitted token-matched batch-size runs: 1437(bs=32,max_iters=10000), 1438(bs=128,max_iters=2500).
 2026-02-11 01:33:26 CST | completed TinyStories main(ts_main_lr1e3_20k,best_val=1.3730), OWT main(owt_main_lr1e3_20k,best_val=4.0370), ablations and batch-size sweeps; synced all run artifacts/slurm logs to local.
+2026-02-11 23:15:17 CST | audited handout deliverables end-to-end; added per-problem deliverable mapping and completed missing written responses in writeup.

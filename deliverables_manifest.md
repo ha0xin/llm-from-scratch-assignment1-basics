@@ -3,6 +3,7 @@
 ## 1. 代码与文档
 
 - `writeup.md`：中文实验报告（主文档）
+- `assignment1_deliverables_summary.md`：逐题 deliverable 对照汇总
 - `assignment1_checklist.md`：作业清单与完成状态
 - `deliverables_manifest.md`：本清单
 

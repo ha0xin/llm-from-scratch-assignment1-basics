@@ -1,6 +1,6 @@
 # Assignment 1 清单（完成度跟踪）
 
-> 状态定义：`[x]` 已完成，`[~]` 进行中，`[ ]` 未开始  
+> 状态定义：`[x]` 已完成，`[~]` 进行中，`[ ]` 未开始
 > 说明：代码测试以 `lfs` 上 `uv run pytest -q` 为准（当前：`47 passed, 1 xpassed`）。
 
 ## A. 代码实现题
@@ -55,6 +55,7 @@
 ## F. 文档与交付
 
 - [x] `writeup.md`（中文）
+- [x] `assignment1_deliverables_summary.md`（逐题 deliverable 对照）
 - [x] `assignment1_checklist.md`（本文件）
 - [x] `deliverables_manifest.md`（原始数据/处理数据/图表/日志清单）
 - [x] 原始日志与处理结果归档
