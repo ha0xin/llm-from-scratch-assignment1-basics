@@ -291,7 +291,7 @@ F_{step}\approx 3F_{forward}+cP
 \caption{Learning Rate Sweep（TinyStories）}
 \begin{tabular}{rrl}
 \toprule
-lr & best val loss & 备注 \\
+lr & 报告 val loss & 备注 \\
 \midrule
 1e-4 & 2.1700 & 稳定收敛 \\
 3e-4 & 1.7620 & 稳定收敛 \\
@@ -301,8 +301,8 @@ lr & best val loss & 备注 \\
 3e-2 & 3.7422 & 高损失不稳定 \\
 1e-1 & 4.4049 & 高损失不稳定 \\
 3e-1 & 4.2369 & 出现尖峰（max val=33.63） \\
-1e0  & 9.2687 & 发散（max val=149.86） \\
-3e0  & 9.2687 & 发散（max val=876.86） \\
+1e0  & 57.5486（末次） & 发散（max val=149.86） \\
+3e0  & 117.5958（末次） & 发散（max val=876.86） \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -332,8 +332,8 @@ lr & best val loss & 备注 \\
 
 \noindent 发散判据采用验证损失相对初始值的显著放大。补跑结果如下：
 \begin{itemize}
-  \item \texttt{lr=1.0}: \(\,149.86 / 9.27 \approx 16.17\,\)
-  \item \texttt{lr=3.0}: \(\,876.86 / 9.27 \approx 94.61\,\)
+  \item \texttt{lr=1.0}: 末次 val loss=57.5486；峰值 \(149.86 / 9.27 \approx 16.17\) 倍初始值
+  \item \texttt{lr=3.0}: 末次 val loss=117.5958；峰值 \(876.86 / 9.27 \approx 94.61\) 倍初始值
 \end{itemize}
 对应日志：\texttt{slurm\_logs/train\_lm\_1478.out}、\texttt{slurm\_logs/train\_lm\_1479.out}。
 

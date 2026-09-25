@@ -1,0 +1,7 @@
+{
+  "run_name": "ts_bs256_limit_probe",
+  "best_val_loss": 2.2108814239501955,
+  "max_iters": 300,
+  "tokens_seen": 19660800,
+  "elapsed_sec": 84.49011992593296
+}

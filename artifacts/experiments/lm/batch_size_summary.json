@@ -3,40 +3,72 @@
     "tag": "bs1_lr3e4_5k",
     "run": "ts_bs1_lr3e4_5k",
     "batch_size": 1,
+    "status": "ok",
     "best_val_loss": 2.9371371805667876,
     "best_iter": 3250,
     "max_iters": 5000,
     "tokens_seen": 1280000,
-    "elapsed_sec": 67.421041080961
+    "elapsed_sec": 67.421041080961,
+    "note": ""
   },
   {
     "tag": "bs32_lr1e3_5k",
     "run": "ts_bs32_lr1e3_5k",
     "batch_size": 32,
+    "status": "ok",
     "best_val_loss": 1.6664995431900025,
     "best_iter": 4999,
     "max_iters": 5000,
     "tokens_seen": 40960000,
-    "elapsed_sec": 126.9878063229844
+    "elapsed_sec": 126.9878063229844,
+    "note": ""
   },
   {
     "tag": "bs64_lr1e3_5k",
     "run": "ts_lr_1e3",
     "batch_size": 64,
+    "status": "ok",
     "best_val_loss": 1.5592819511890412,
     "best_iter": 4750,
     "max_iters": 5000,
     "tokens_seen": 81920000,
-    "elapsed_sec": 255.64942568400875
+    "elapsed_sec": 255.64942568400875,
+    "note": ""
   },
   {
     "tag": "bs128_lr15e3_5k",
     "run": "ts_bs128_lr15e3_5k",
     "batch_size": 128,
+    "status": "ok",
     "best_val_loss": 1.4614313542842865,
     "best_iter": 4750,
     "max_iters": 5000,
     "tokens_seen": 163840000,
-    "elapsed_sec": 521.9639293879736
+    "elapsed_sec": 521.9639293879736,
+    "note": ""
+  },
+  {
+    "tag": "bs256_limit_probe",
+    "run": "ts_bs256_limit_probe",
+    "batch_size": 256,
+    "status": "ok",
+    "best_val_loss": 2.2108814239501955,
+    "best_iter": 299,
+    "max_iters": 300,
+    "tokens_seen": 19660800,
+    "elapsed_sec": 84.49011992593296,
+    "note": ""
+  },
+  {
+    "tag": "bs512_limit_probe",
+    "run": "ts_bs512_limit_probe",
+    "batch_size": 512,
+    "status": "oom",
+    "best_val_loss": null,
+    "best_iter": null,
+    "max_iters": 300,
+    "tokens_seen": null,
+    "elapsed_sec": null,
+    "note": "CUDA OOM at first forward pass (batch=512)"
   }
 ]

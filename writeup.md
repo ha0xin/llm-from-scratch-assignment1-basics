@@ -1,6 +1,6 @@
 # CS336 Assignment 1 作业文档（中文）
 
-> 版本：2026-02-11  
+> 版本：2026-02-12  
 > 仓库：`ha0xin/llm-from-scratch-assignment1-basics`  
 > 运行环境：`lfs-dev`（8x RTX 5090，共享）
 
@@ -160,39 +160,49 @@
 - 运行日志：`slurm_logs/train_lm_*.out`
 - 实验日记：`logs/progress_journal.md`
 
-### 3.2 `learning_rate`：学习率扫描与收敛目标
+### 3.2 `learning_rate`：学习率扫描、发散运行与稳定边界
 
 扫描结果（TinyStories，短跑设置）：
 
-| lr | best val loss |
-|---:|---:|
-| 1e-4 | 2.1700 |
-| 3e-4 | 1.7620 |
-| 1e-3 | 1.5593 |
-| 3e-3 | 1.6799 |
-| 1e-2 | 2.5253 |
-| 3e-2 | 3.7422 |
-| 1e-1 | 4.4049 |
+| lr | 报告 val loss | 备注 |
+|---:|---:|---|
+| 1e-4 | 2.1700 | 稳定收敛 |
+| 3e-4 | 1.7620 | 稳定收敛 |
+| 1e-3 | 1.5593 | 最优区间 |
+| 3e-3 | 1.6799 | 开始退化 |
+| 1e-2 | 2.5253 | 明显退化 |
+| 3e-2 | 3.7422 | 高损失不稳定 |
+| 1e-1 | 4.4049 | 高损失不稳定 |
+| 3e-1 | 4.2369 | 出现尖峰（`max val=33.63`） |
+| 1e0 | 57.5486（末次） | **发散**（`max val=149.86`） |
+| 3e0 | 117.5958（末次） | **发散**（`max val=876.86`） |
 
-策略：先粗扫（`1e-4` 到 `1e-1`），以验证集 loss 和稳定性选取 `1e-3` 作为主实验学习率。
+策略：先粗扫（`1e-4` 到 `1e-1`），再补跑更激进学习率（`3e-1, 1e0, 3e0`）获取显式发散证据，最终选取 `1e-3` 作为主实验学习率。
 
 主实验（`ts_main_lr1e3_20k`）结果：
 
 - `best_val_loss = 1.3730`（`iter=19999`）
 - 满足“TinyStories val loss <= 1.45”要求。
 
-关于“稳定边界”：随 lr 增大，收敛先加快后明显恶化；本次未出现 NaN，但在 `3e-2`、`1e-1` 已进入高损失不稳定区，可视为“稳定边界之外”。
+关于“稳定边界”：随 lr 增大，收敛先加快后明显恶化。`lr=1.0` 与 `lr=3.0` 的验证损失峰值分别达到 `149.86` 与 `876.86`，末次验证损失分别为 `57.5486` 与 `117.5958`，相对初始损失分别约为 `6.21x` 与 `12.69x`，满足“至少一个 divergent run”的 deliverable 要求。  
+对应数据与图：
 
-### 3.3 `batch_size experimented`
+- `artifacts/experiments/lm/lr_divergence_summary.md`
+- `artifacts/figures/tinystories_lr_divergence_val.png`
+- 关键日志：`slurm_logs/train_lm_1478.out`, `slurm_logs/train_lm_1479.out`
+
+### 3.3 `batch_size experimented`（从 1 扫到显存上限）
 
 #### 同步数（5k steps）
 
-| batch | lr | best val loss | tokens seen |
-|---:|---:|---:|---:|
-| 1 | 3e-4 | 2.9371 | 1.28M |
-| 32 | 1e-3 | 1.6665 | 40.96M |
-| 64 | 1e-3 | 1.5593 | 81.92M |
-| 128 | 1.5e-3 | 1.4614 | 163.84M |
+| batch | lr | status | best val loss | tokens seen | 备注 |
+|---:|---:|---|---:|---:|---|
+| 1 | 3e-4 | ok | 2.9371 | 1.28M | 可训练 |
+| 32 | 1e-3 | ok | 1.6665 | 40.96M | 可训练 |
+| 64 | 1e-3 | ok | 1.5593 | 81.92M | 可训练 |
+| 128 | 1.5e-3 | ok | 1.4614 | 163.84M | 可训练 |
+| 256 | 1.5e-3 | ok | 2.2109 | 19.66M | 显存仍可容纳（探测跑 300 iters） |
+| 512 | 1.5e-3 | oom | - | - | 首个 forward 即 OOM |
 
 #### token-matched（约 81.92M tokens）
 
@@ -202,7 +212,8 @@
 | 64 | 1.5593 |
 | 128 | 1.5745 |
 
-结论：在 token 预算一致时，`batch=64` 略优；过小 batch 噪声大、过大 batch 需要更精细调参与更长训练才稳定受益。
+结论：在本机型（RTX 5090 32GB）和当前模型配置下，batch 上限落在 `256 < max_batch < 512`。这满足题目“从 1 扫到 GPU memory limit”的要求。  
+OOM 证据：`slurm_logs/train_lm_1475.err`（`torch.OutOfMemoryError`）。
 
 ### 3.4 `generate`：文本生成
 
@@ -230,13 +241,16 @@
 | 去 RMSNorm（lr=3e-4） | 1.7679 |
 | post-norm | 1.5553 |
 | NoPE（去 RoPE） | 1.6537 |
-| SiLU（替换 SwiGLU） | 1.6110 |
+| SiLU（替换 SwiGLU，`d_ff=2048`） | 1.5835 |
 
 结论：
 
 - 去 RoPE 与改用 SiLU 都稳定退化。
 - 去 RMSNorm 在较优 lr 下小幅退化，但在更保守 lr 下退化明显，说明其与稳定性强相关。
 - post-norm 在短程内接近 baseline；是否长期更稳仍需更长训练窗口验证。
+
+这里的 `swiglu_ablation` 按 handout 要求使用参数量匹配设置：`SiLU` 版本采用 `d_ff = 4 * d_model = 2048`（`d_model=512`）。  
+对应 run：`artifacts/experiments/lm/ts_ablate_silu_dff2048_lr1e3_5k/config.json`。
 
 ### 3.6 `mainExperiment`：OWT 主实验
 
@@ -263,5 +277,7 @@
 - 逐题 deliverable 对照：`assignment1_deliverables_summary.md`
 - 清单：`assignment1_checklist.md`
 - 产物总清单：`deliverables_manifest.md`
+- 数据处理脚本：`scripts/refresh_assignment1_reports.py`
+- 画图脚本：`scripts/plot_curves.py`
 
 如需英文提交，可在此中文版基础上逐节翻译，不改变数值与结论。

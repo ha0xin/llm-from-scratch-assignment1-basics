@@ -35,8 +35,8 @@
 ## C. LM 实验（TinyStories）
 
 - [x] 基线训练（收敛曲线）
-- [x] Learning rate sweep（含高学习率不稳定区间）
-- [x] Batch size 对比
+- [x] Learning rate sweep（含至少一个 divergent run：`lr=1.0, 3.0`）
+- [x] Batch size 对比（从 `1` 到显存上限，`512` 记录 OOM）
 - [x] 文本生成样例
 
 ## D. LM 消融实验
@@ -44,7 +44,7 @@
 - [x] 去 RMSNorm
 - [x] post-norm vs pre-norm
 - [x] NoPE vs RoPE
-- [x] SwiGLU vs SiLU
+- [x] SwiGLU vs SiLU（SiLU 采用 `d_ff=4*d_model=2048` 做参数量匹配）
 
 ## E. LM 实验（OWT）
 

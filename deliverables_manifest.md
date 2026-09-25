@@ -3,9 +3,12 @@
 ## 1. 代码与文档
 
 - `writeup.md`：中文实验报告（主文档）
+- `writeup_assignment1_ctexart.tex`：中文 LaTeX 正式作业文档
+- `writeup_assignment1_ctexart.pdf`：XeLaTeX 编译产物
 - `assignment1_deliverables_summary.md`：逐题 deliverable 对照汇总
 - `assignment1_checklist.md`：作业清单与完成状态
 - `deliverables_manifest.md`：本清单
+- `scripts/refresh_assignment1_reports.py`：实验汇总数据重建脚本
 
 ## 2. 原始实验日志（Raw）
 
@@ -34,6 +37,8 @@
 - `artifacts/experiments/lm/*/best_metrics.json`
 - `artifacts/experiments/lm/lr_sweep_summary.json`
 - `artifacts/experiments/lm/lr_sweep_summary.md`
+- `artifacts/experiments/lm/lr_divergence_summary.json`
+- `artifacts/experiments/lm/lr_divergence_summary.md`
 - `artifacts/experiments/lm/ablation_summary.json`
 - `artifacts/experiments/lm/ablation_summary.md`
 - `artifacts/experiments/lm/batch_size_summary.json`
@@ -44,6 +49,8 @@
 ## 4. 图表与可视化
 
 - `artifacts/figures/*.png`（学习曲线与对比图）
+- 其中新增：
+  - `artifacts/figures/tinystories_lr_divergence_val.png`
 
 ## 5. 模型与检查点
 

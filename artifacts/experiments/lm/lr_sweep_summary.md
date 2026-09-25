@@ -1,4 +1,4 @@
-# TinyStories LR Sweep Summary
+# Learning Rate Sweep Summary
 
 | run | lr | best_val_loss | best_iter | max_iters | tokens_seen | elapsed_sec |
 |---|---:|---:|---:|---:|---:|---:|
@@ -9,3 +9,6 @@
 | ts_lr_1e2_div | 1.0e-02 | 2.5253 | 999 | 1000 | 16384000 | 65.05 |
 | ts_lr_3e2_div | 3.0e-02 | 3.7422 | 380 | 400 | 6553600 | 36.33 |
 | ts_lr_1e1_div | 1.0e-01 | 4.4049 | 199 | 200 | 3276800 | 18.84 |
+| ts_lr_3e1_div_probe2 | 3.0e-01 | 4.2369 | 160 | 300 | 4915200 | 32.14 |
+| ts_lr_1e0_div_probe2 | 1.0e+00 | 9.2687 | 0 | 300 | 4915200 | 28.25 |
+| ts_lr_3e0_div_probe3 | 3.0e+00 | 9.2687 | 0 | 200 | 3276800 | 27.88 |
